@@ -1,9 +1,11 @@
 import path from 'path';
 import mimeTypes from 'mime-types';
 import fs, {createReadStream} from 'fs';
-import {escapeRegexp, normalizePath} from './utils/index.js';
-import {DebuggableService} from '@e22m4u/js-service';
+import {IncomingMessage, ServerResponse} from 'http';
 import {InvalidArgumentError} from '@e22m4u/js-format';
+import {HttpStaticRoute} from './http-static-route.js';
+import {escapeRegexp, normalizePath} from './utils/index.js';
+import {DebuggableService, isServiceContainer} from '@e22m4u/js-service';
 
 /**
  * Http static router.
@@ -13,19 +15,45 @@ export class HttpStaticRouter extends DebuggableService {
    * Routes.
    *
    * @protected
+   * @type {HttpStaticRoute[]}
    */
   _routes = [];
 
   /**
+   * Options.
+   *
+   * @type {object}
+   */
+  _options = {};
+
+  /**
    * Constructor.
    *
-   * @param {import('@e22m4u/js-service').ServiceContainer} container
+   * @param {object} options
    */
-  constructor(container) {
-    super(container, {
+  constructor(options = {}) {
+    if (isServiceContainer(options)) {
+      options = {};
+    }
+    super(undefined, {
       noEnvironmentNamespace: true,
       namespace: 'jsHttpStaticRouter',
     });
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      throw new InvalidArgumentError(
+        'Parameter "options" must be an Object, but %v was given.',
+        options,
+      );
+    }
+    if (options.trailingSlash !== undefined) {
+      if (typeof options.trailingSlash !== 'boolean') {
+        throw new InvalidArgumentError(
+          'Option "trailingSlash" must be a Boolean, but %v was given.',
+          options.trailingSlash,
+        );
+      }
+    }
+    this._options = {...options};
   }
 
   /**
@@ -36,6 +64,18 @@ export class HttpStaticRouter extends DebuggableService {
    * @returns {object}
    */
   addRoute(remotePath, resourcePath) {
+    if (typeof remotePath !== 'string') {
+      throw new InvalidArgumentError(
+        'Remote path must be a String, but %v was given.',
+        remotePath,
+      );
+    }
+    if (typeof resourcePath !== 'string') {
+      throw new InvalidArgumentError(
+        'Resource path must be a String, but %v was given.',
+        resourcePath,
+      );
+    }
     const debug = this.getDebuggerFor(this.addRoute);
     resourcePath = path.resolve(resourcePath);
     debug('Adding a new route.');
@@ -49,7 +89,7 @@ export class HttpStaticRouter extends DebuggableService {
       // это может быть ошибкой конфигурации
       console.error(error);
       throw new InvalidArgumentError(
-        'Static resource path does not exist %v.',
+        'Resource path %v does not exist.',
         resourcePath,
       );
     }
@@ -58,9 +98,9 @@ export class HttpStaticRouter extends DebuggableService {
     const normalizedRemotePath = normalizePath(remotePath);
     const escapedRemotePath = escapeRegexp(normalizedRemotePath);
     const regexp = isFile
-      ? new RegExp(`^${escapedRemotePath}$`)
+      ? new RegExp(`^${escapedRemotePath}/*$`)
       : new RegExp(`^${escapedRemotePath}(?:$|\\/)`);
-    const route = {remotePath, resourcePath, regexp, isFile};
+    const route = new HttpStaticRoute(remotePath, resourcePath, regexp, isFile);
     this._routes.push(route);
     // самые длинные пути проверяются первыми,
     // чтобы избежать коллизий при поиске маршрута
@@ -71,10 +111,17 @@ export class HttpStaticRouter extends DebuggableService {
   /**
    * Match route.
    *
-   * @param {import('http').IncomingMessage} req
+   * @param {IncomingMessage} req
    * @returns {object|undefined}
    */
   matchRoute(req) {
+    if (!(req instanceof IncomingMessage)) {
+      throw new InvalidArgumentError(
+        'Parameter "req" must be an instance of IncomingMessage, ' +
+          'but %v was given.',
+        req,
+      );
+    }
     const debug = this.getDebuggerFor(this.matchRoute);
     debug('Matching routes with incoming request.');
     const url = (req.url || '/').replace(/\?.*$/, '');
@@ -99,13 +146,59 @@ export class HttpStaticRouter extends DebuggableService {
   /**
    * Send file by route.
    *
-   * @param {object} route
+   * @param {HttpStaticRoute} route
    * @param {import('http').IncomingMessage} req
    * @param {import('http').ServerResponse} res
    */
   sendFileByRoute(route, req, res) {
+    if (!(route instanceof HttpStaticRoute)) {
+      throw new InvalidArgumentError(
+        'Parameter "route" must be an instance of HttpStaticRoute, ' +
+          'but %v was given.',
+        route,
+      );
+    }
+    if (!(req instanceof IncomingMessage)) {
+      throw new InvalidArgumentError(
+        'Parameter "req" must be an instance of IncomingMessage, ' +
+          'but %v was given.',
+        req,
+      );
+    }
+    if (!(res instanceof ServerResponse)) {
+      throw new InvalidArgumentError(
+        'Parameter "res" must be an instance of ServerResponse, ' +
+          'but %v was given.',
+        res,
+      );
+    }
     const reqUrl = req.url || '/';
     const reqPath = reqUrl.replace(/\?.*$/, '');
+    // если параметр "trailingSlash" не активен, и адрес запроса
+    // не указывает на корень, но содержит косую черту в конце пути,
+    // то косая черта принудительно удаляется и выполняется редирект
+    if (
+      !this._options.trailingSlash &&
+      reqPath !== '/' &&
+      /\/$/.test(reqPath)
+    ) {
+      const searchMatch = reqUrl.match(/\?.*$/);
+      const search = searchMatch ? searchMatch[0] : '';
+      const normalizedPath = reqPath
+        .replace(/\/{2,}/g, '/') // удаление дублирующих слешей
+        .replace(/\/+$/, ''); // удаление завершающего слеша
+      res.writeHead(302, {location: `${normalizedPath}${search}`});
+      res.end();
+      return;
+    }
+    // если адрес запроса содержит дублирующие слеши,
+    // то адрес нормализуется и выполняется редирект
+    if (/\/{2,}/.test(reqUrl)) {
+      const normalizedUrl = reqUrl.replace(/\/{2,}/g, '/');
+      res.writeHead(302, {location: normalizedUrl});
+      res.end();
+      return;
+    }
     // если ресурс ссылается на папку, то из адреса запроса
     // извлекается дополнительная часть (если присутствует),
     // и добавляется к адресу ресурса
@@ -132,32 +225,43 @@ export class HttpStaticRouter extends DebuggableService {
     // установка заголовков и отправка потока
     fs.stat(targetPath, (statsError, stats) => {
       if (statsError) {
-        return _handleFsError(statsError, res);
+        return this._handleFsError(statsError, res);
       }
       if (stats.isDirectory()) {
-        // так как в html обычно используются относительные пути,
-        // то адрес директории статических ресурсов должен завершаться
-        // косой чертой, чтобы файлы стилей и изображений загружались
-        // именно из нее, а не обращались на уровень выше
-        if (/[^/]$/.test(reqPath)) {
-          const searchMatch = reqUrl.match(/\?.*$/);
-          const search = searchMatch ? searchMatch[0] : '';
-          const normalizedPath = reqUrl.replace(/\/{2,}/g, '/');
-          res.writeHead(302, {location: `${normalizedPath}/${search}`});
-          res.end();
-          return;
-        }
-        // если адрес запроса содержит дублирующие слеши,
-        // то адрес нормализуется и выполняется редирект
-        if (/\/{2,}/.test(reqUrl)) {
-          const normalizedUrl = reqUrl.replace(/\/{2,}/g, '/');
-          res.writeHead(302, {location: normalizedUrl});
-          res.end();
-          return;
+        // если активен параметр "trailingSlash", и адрес директории
+        // не содержит косую черту в конце пути, то косая черта
+        // добавляется принудительно и выполняется редирект
+        if (this._options.trailingSlash) {
+          // так как в html обычно используются относительные пути,
+          // то адрес директории статических ресурсов должен завершаться
+          // косой чертой, чтобы файлы стилей и изображений загружались
+          // из текущего уровня, а не обращались на уровень выше
+          if (/[^/]$/.test(reqPath)) {
+            const searchMatch = reqUrl.match(/\?.*$/);
+            const search = searchMatch ? searchMatch[0] : '';
+            const normalizedPath = reqPath.replace(/\/{2,}/g, '/');
+            res.writeHead(302, {location: `${normalizedPath}/${search}`});
+            res.end();
+            return;
+          }
         }
         // если целевой путь указывает на папку,
         // то подставляется index.html
         targetPath = path.join(targetPath, 'index.html');
+      } else {
+        // если адрес файла не указывает на корень и в конце пути
+        // содержит косую черту, то косая черта принудительно
+        // удаляется и выполняется редирект
+        if (reqPath !== '/' && /\/$/.test(reqPath)) {
+          const searchMatch = reqUrl.match(/\?.*$/);
+          const search = searchMatch ? searchMatch[0] : '';
+          const normalizedPath = reqPath
+            .replace(/\/{2,}/g, '/') // удаление дублирующих слешей
+            .replace(/\/+$/, ''); // удаление завершающего слеша
+          res.writeHead(302, {location: `${normalizedPath}${search}`});
+          res.end();
+          return;
+        }
       }
       // формирование заголовка "content-type"
       // в зависимости от расширения файла
@@ -168,7 +272,7 @@ export class HttpStaticRouter extends DebuggableService {
       // что значительно снижает использование памяти
       const fileStream = createReadStream(targetPath);
       fileStream.on('error', error => {
-        _handleFsError(error, res);
+        this._handleFsError(error, res);
       });
       // отправка заголовка 200, только после
       // этого начинается отдача файла
@@ -182,28 +286,31 @@ export class HttpStaticRouter extends DebuggableService {
         }
         fileStream.pipe(res);
       });
+      req.on('close', () => {
+        fileStream.destroy();
+      });
     });
   }
-}
 
-/**
- * Handle filesystem error.
- *
- * @param {object} error
- * @param {object} res
- * @returns {undefined}
- */
-function _handleFsError(error, res) {
-  if (res.headersSent) {
-    return;
-  }
-  if ('code' in error && error.code === 'ENOENT') {
-    res.writeHead(404, {'content-type': 'text/plain'});
-    res.write('404 Not Found');
-    res.end();
-  } else {
-    res.writeHead(500, {'content-type': 'text/plain'});
-    res.write('500 Internal Server Error');
-    res.end();
+  /**
+   * Handle filesystem error.
+   *
+   * @param {object} error
+   * @param {object} res
+   * @returns {undefined}
+   */
+  _handleFsError(error, res) {
+    if (res.headersSent) {
+      return;
+    }
+    if ('code' in error && error.code === 'ENOENT') {
+      res.writeHead(404, {'content-type': 'text/plain'});
+      res.write('404 Not Found');
+      res.end();
+    } else {
+      res.writeHead(500, {'content-type': 'text/plain'});
+      res.write('500 Internal Server Error');
+      res.end();
+    }
   }
 }

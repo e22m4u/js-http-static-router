@@ -1,16 +1,14 @@
 import {ServerResponse} from 'node:http';
 import {IncomingMessage} from 'node:http';
+import {HttpStaticRoute} from './http-static-route.js';
 import {DebuggableService, ServiceContainer} from '@e22m4u/js-service';
 
 /**
- * Static file route.
+ * Http static router options.
  */
-export type HttpStaticRoute = {
-  remotePath: string;
-  resourcePath: string;
-  regexp: RegExp;
-  isFile: boolean;
-};
+export type HttpStaticRouterOptions = {
+  trailingSlash?: boolean;
+}
 
 /**
  * Http static router.
@@ -19,9 +17,9 @@ export class HttpStaticRouter extends DebuggableService {
   /**
    * Constructor.
    * 
-   * @param container 
+   * @param options
    */
-  constructor(container?: ServiceContainer);
+  constructor(options?: HttpStaticRouterOptions);
 
   /**
    * Add route.
