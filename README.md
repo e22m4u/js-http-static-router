@@ -64,7 +64,7 @@ server.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
   console.log('Try to open:');
   console.log('http://localhost:3000/static/');
-  console.log('http://localhost:3000/favicon.ico');
+  console.log('http://localhost:3000/file.txt');
 });
 ```
 
