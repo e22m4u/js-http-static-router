@@ -9,10 +9,10 @@
     "router",
     "http"
   ],
-  "homepage": "https://gitrepos.ru/e22m4u/js-http-static-router",
+  "homepage": "https://gitverse.ru/e22m4u/js-http-static-router",
   "repository": {
     "type": "git",
-    "url": "git+https://gitrepos.ru/e22m4u/js-http-static-router.git"
+    "url": "git+https://gitverse.ru/e22m4u/js-http-static-router.git"
   },
   "type": "module",
   "types": "./src/index.d.ts",
