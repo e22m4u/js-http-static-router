@@ -29,63 +29,49 @@ import http from 'http';
 import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 
 // создание экземпляра маршрутизатора
-const staticRouter = new HttpStaticRouter();
+const staticRouter = new HttpStaticRouter({
+  // при использовании опции "rootDir", относительные пути
+  // в регистрируемых маршрутах будут разрешаться относительно
+  // указанного адреса файловой системы
+  rootDir: import.meta.dirname,
+  // в данном случае "rootDir" указывает
+  // на путь к директории текущего модуля
+});
+// доступ к import.meta.dirname возможен
+// только для ESM начиная с Node.js 20.11.0
 
-// определение директории "../static"
-// доступной по адресу "/static"
-staticRouter.addRoute(
-  '/static',                          // путь маршрута
-  `${import.meta.dirname}/../static`, // файловый путь
-);
+// экспозиция содержимого директории "/static"
+// доступным по адресу "/assets/{file_name}"
+staticRouter.defineRoute({
+  remotePath: '/assets',     // путь маршрута
+  resourcePath: '../static', // файловый путь
+});
 
-// объявление файла "./static/file.txt"
-// доступным по адресу "/static"
-staticRouter.addRoute(
-  '/file.txt',
-  `${import.meta.dirname}/static/file.txt`,
-);
+// объявление файла "./index.html"
+// доступным по адресу "/home"
+staticRouter.defineRoute({
+  remotePath: '/home',
+  resourcePath: './static/index.html',
+});
 
-// создание HTTP сервера и подключение обработчика
+// создание HTTP сервера и определение
+// функции для обработки запросов
 const server = new http.Server();
-server.on('request', (req, res) => {
-  // если статический маршрут найден,
-  // выполняется поиск и отдача файла
-  const staticRoute = staticRouter.matchRoute(req);
-  if (staticRoute) {
-    return staticRouter.sendFileByRoute(staticRoute, req, res);
+server.on('request', async (req, res) => {
+  const fileSent = await staticRouter.handleRequest(req, res);
+  if (!fileSent) {
+    res.writeHead(404, {'Content-Type': 'text/plain'});
+    res.write('404 Not Found');
+    res.end();
   }
-  // в противном случае запрос обрабатывается
-  // основной логикой приложения
-  res.writeHead(200, {'Content-Type': 'text/plain'});
-  res.end('Hello from App!');
 });
 
 server.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
   console.log('Try to open:');
-  console.log('http://localhost:3000/static/');
-  console.log('http://localhost:3000/file.txt');
+  console.log('http://localhost:3000/home');
+  console.log('http://localhost:3000/assets/file.txt');
 });
-```
-
-### trailingSlash
-
-Так как в HTML обычно используются относительные пути, чтобы файлы
-стилей и изображений загружались относительно текущего уровня вложенности,
-а не обращались на уровень выше, может потребоваться параметр `trailingSlash`
-для принудительного добавления косой черты в конце адреса.
-
-```js
-import http from 'http';
-import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
-
-const staticRouter = new HttpStaticRouter({
-  trailingSlash: true, // <= добавлять косую черту (для директорий)
-});
-
-// теперь при обращении к директориям без закрывающего
-// слеша будет выполняться принудительный редирект (302)
-// /dir => /dir/
 ```
 
 ## Тесты

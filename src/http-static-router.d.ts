@@ -1,51 +1,56 @@
 import {ServerResponse} from 'node:http';
 import {IncomingMessage} from 'node:http';
-import {HttpStaticRoute} from './http-static-route.js';
+import {StaticRouteDefinition} from './static-route.js';
 import {DebuggableService, ServiceContainer} from '@e22m4u/js-service';
 
 /**
  * Http static router options.
  */
 export type HttpStaticRouterOptions = {
-  trailingSlash?: boolean;
-}
+  rootDir?: string;
+};
 
 /**
  * Http static router.
  */
-export class HttpStaticRouter extends DebuggableService {
+export declare class HttpStaticRouter extends DebuggableService {
   /**
    * Constructor.
-   * 
+   *
+   * @param container
+   */
+  constructor(container: ServiceContainer);
+
+  /**
+   * Constructor.
+   *
    * @param options
    */
-  constructor(options?: HttpStaticRouterOptions);
+  constructor(options: HttpStaticRouterOptions);
 
   /**
-   * Add route.
+   * Constructor.
    *
-   * @param remotePath
-   * @param resourcePath
+   * @param container
+   * @param options
    */
-  addRoute(remotePath: string, resourcePath: string): this;
+  constructor(container: ServiceContainer, options: HttpStaticRouterOptions);
 
   /**
-   * Match route.
+   * Define route.
    *
-   * @param req
+   * @param routeDef
    */
-  matchRoute(req: IncomingMessage): HttpStaticRoute | undefined;
+  defineRoute(routeDef: StaticRouteDefinition): this;
 
   /**
-   * Send file by route.
+   * Handle request.
    *
-   * @param route
-   * @param req
-   * @param res
+   * @param request
+   * @param response
    */
-  sendFileByRoute(
-    route: HttpStaticRoute,
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): void;
+  handleRequest(
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<boolean>;
 }

@@ -1,2 +1,2 @@
 export * from './escape-regexp.js';
-export * from './normalize-path.js';
+export * from './get-pathname-from-url.js';

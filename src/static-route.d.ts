@@ -1,7 +1,16 @@
+
 /**
- * Static file route.
+ * Static route definition.
  */
-export class HttpStaticRoute {
+export type StaticRouteDefinition = {
+  remotePath: string;
+  resourcePath: string;
+}
+
+/**
+ * Static route.
+ */
+export class StaticRoute {
   /**
    * Remote path.
    *
@@ -33,15 +42,7 @@ export class HttpStaticRoute {
   /**
    * Constructor.
    * 
-   * @param remotePath 
-   * @param resourcePath 
-   * @param regexp 
-   * @param isFile 
+   * @param routeDef
    */
-  constructor(
-    remotePath: string,
-    resourcePath: string,
-    regexp: RegExp,
-    isFile: boolean,
-  );
+  constructor(routeDef: StaticRouteDefinition);
 }

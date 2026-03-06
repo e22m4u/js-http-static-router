@@ -31,14 +31,24 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.js
 var index_exports = {};
 __export(index_exports, {
-  HttpStaticRoute: () => HttpStaticRoute,
-  HttpStaticRouter: () => HttpStaticRouter
+  HttpStaticRouter: () => HttpStaticRouter,
+  StaticRoute: () => StaticRoute
 });
 module.exports = __toCommonJS(index_exports);
 
-// src/http-static-route.js
+// src/static-route.js
+var import_fs = __toESM(require("fs"), 1);
+var import_path = __toESM(require("path"), 1);
+
+// src/utils/escape-regexp.js
+function escapeRegexp(input) {
+  return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+__name(escapeRegexp, "escapeRegexp");
+
+// src/static-route.js
 var import_js_format = require("@e22m4u/js-format");
-var _HttpStaticRoute = class _HttpStaticRoute {
+var _StaticRoute = class _StaticRoute {
   /**
    * Remote path.
    *
@@ -66,307 +76,326 @@ var _HttpStaticRoute = class _HttpStaticRoute {
   /**
    * Constructor.
    *
-   * @param {string} remotePath
-   * @param {string} resourcePath
-   * @param {RegExp} regexp
-   * @param {boolean} isFile
+   * @param {string} routeDef
    */
-  constructor(remotePath, resourcePath, regexp, isFile) {
-    if (typeof remotePath !== "string") {
+  constructor(routeDef) {
+    if (!routeDef || typeof routeDef !== "object" || Array.isArray(routeDef)) {
       throw new import_js_format.InvalidArgumentError(
-        'Parameter "remotePath" must be a String, but %v was given.',
-        remotePath
+        'Parameter "routeDef" must be an Object, but %v was given.',
+        routeDef
       );
     }
-    if (typeof resourcePath !== "string") {
+    if (typeof routeDef.remotePath !== "string") {
       throw new import_js_format.InvalidArgumentError(
-        'Parameter "resourcePath" must be a String, but %v was given.',
+        'Option "remotePath" must be a String, but %v was given.',
+        routeDef.remotePath
+      );
+    }
+    if (!routeDef.remotePath.startsWith("/")) {
+      throw new import_js_format.InvalidArgumentError(
+        'Option "remotePath" must starts with "/", but %v was given.',
+        routeDef.remotePath
+      );
+    }
+    if (typeof routeDef.resourcePath !== "string") {
+      throw new import_js_format.InvalidArgumentError(
+        'Option "resourcePath" must be a String, but %v was given.',
+        routeDef.resourcePath
+      );
+    }
+    const resourcePath = import_path.default.resolve(routeDef.resourcePath);
+    let stats;
+    try {
+      stats = import_fs.default.statSync(resourcePath);
+    } catch (error) {
+      console.error(error);
+      throw new import_js_format.InvalidArgumentError(
+        "Resource path %v does not exist.",
         resourcePath
       );
     }
-    if (!(regexp instanceof RegExp)) {
-      throw new import_js_format.InvalidArgumentError(
-        'Parameter "regexp" must be an instance of RegExp, but %v was given.',
-        regexp
-      );
-    }
-    if (typeof isFile !== "boolean") {
-      throw new import_js_format.InvalidArgumentError(
-        'Parameter "isFile" must be a String, but %v was given.',
-        isFile
-      );
-    }
-    this.remotePath = remotePath;
+    const isFile = stats.isFile();
+    const escapedRemotePath = escapeRegexp(routeDef.remotePath);
+    const regexp = isFile ? new RegExp(`^${escapedRemotePath}$`) : new RegExp(`^${escapedRemotePath}(?:$|\\/)`);
+    this.remotePath = routeDef.remotePath;
     this.resourcePath = resourcePath;
     this.regexp = regexp;
     this.isFile = isFile;
   }
 };
-__name(_HttpStaticRoute, "HttpStaticRoute");
-var HttpStaticRoute = _HttpStaticRoute;
+__name(_StaticRoute, "StaticRoute");
+var StaticRoute = _StaticRoute;
 
 // src/http-static-router.js
-var import_path = __toESM(require("path"), 1);
+var import_path2 = __toESM(require("path"), 1);
 var import_mime_types = __toESM(require("mime-types"), 1);
-var import_fs = __toESM(require("fs"), 1);
 var import_http = require("http");
+var import_fs2 = __toESM(require("fs"), 1);
+
+// src/utils/get-pathname-from-url.js
 var import_js_format2 = require("@e22m4u/js-format");
-
-// src/utils/escape-regexp.js
-function escapeRegexp(input) {
-  return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-__name(escapeRegexp, "escapeRegexp");
-
-// src/utils/normalize-path.js
-function normalizePath(value, noStartingSlash = false) {
-  if (typeof value !== "string") {
-    return "/";
+var HOST_RE = /^https?:\/\/[^/]+/;
+var QUERY_STRING_RE = /\?.*$/;
+function getPathnameFromUrl(url) {
+  if (typeof url !== "string") {
+    throw new import_js_format2.InvalidArgumentError(
+      'Parameter "url" must be a String, but %v was given.',
+      url
+    );
   }
-  const res = value.trim().replace(/\/+/g, "/").replace(/(^\/|\/$)/g, "");
-  return noStartingSlash ? res : "/" + res;
+  return url.replace(HOST_RE, "").replace(QUERY_STRING_RE, "");
 }
-__name(normalizePath, "normalizePath");
+__name(getPathnameFromUrl, "getPathnameFromUrl");
 
 // src/http-static-router.js
+var import_js_format3 = require("@e22m4u/js-format");
 var import_js_service = require("@e22m4u/js-service");
 var _HttpStaticRouter = class _HttpStaticRouter extends import_js_service.DebuggableService {
   /**
    * Routes.
    *
    * @protected
-   * @type {HttpStaticRoute[]}
+   * @type {StaticRoute[]}
    */
   _routes = [];
   /**
    * Options.
    *
-   * @type {object}
+   * @type {import('./http-static-router.js').HttpStaticRouterOptions}
+   * @protected
    */
   _options = {};
   /**
    * Constructor.
    *
-   * @param {object} options
+   * @param {import('@e22m4u/js-service').ServiceContainer|import('./http-static-router.js').HttpStaticRouterOptions} containerOrOptions
+   * @param {import('./http-static-router.js').HttpStaticRouterOptions} options
    */
-  constructor(options = {}) {
-    if ((0, import_js_service.isServiceContainer)(options)) {
-      options = {};
-    }
-    super(void 0, {
+  constructor(containerOrOptions, options) {
+    const debugOptions = {
       noEnvironmentNamespace: true,
       namespace: "jsHttpStaticRouter"
-    });
-    if (!options || typeof options !== "object" || Array.isArray(options)) {
-      throw new import_js_format2.InvalidArgumentError(
-        'Parameter "options" must be an Object, but %v was given.',
-        options
-      );
-    }
-    if (options.trailingSlash !== void 0) {
-      if (typeof options.trailingSlash !== "boolean") {
-        throw new import_js_format2.InvalidArgumentError(
-          'Option "trailingSlash" must be a Boolean, but %v was given.',
-          options.trailingSlash
+    };
+    if ((0, import_js_service.isServiceContainer)(containerOrOptions)) {
+      super(containerOrOptions, debugOptions);
+    } else if (containerOrOptions !== void 0) {
+      if (!containerOrOptions || typeof containerOrOptions !== "object" || Array.isArray(containerOrOptions)) {
+        throw new import_js_format3.InvalidArgumentError(
+          'Parameter "containerOrOptions" must be an Object or an instance of ServiceContainer, but %v was given.',
+          options
         );
       }
+      super(void 0, debugOptions);
+      if (options === void 0) {
+        options = containerOrOptions;
+        containerOrOptions = void 0;
+      }
+    } else {
+      super(void 0, debugOptions);
     }
-    this._options = { ...options };
+    if (options !== void 0) {
+      if (!options || typeof options !== "object" || Array.isArray(options)) {
+        throw new import_js_format3.InvalidArgumentError(
+          'Parameter "options" must be an Object, but %v was given.',
+          options
+        );
+      }
+      if (options.rootDir !== void 0) {
+        if (typeof options.rootDir !== "string") {
+          throw new import_js_format3.InvalidArgumentError(
+            'Option "rootDir" must be a String, but %v was given.',
+            options.rootDir
+          );
+        }
+        if (!import_path2.default.isAbsolute(options.rootDir)) {
+          throw new import_js_format3.InvalidArgumentError(
+            'Option "rootDir" must be an absolute path, but %v was given.',
+            options.rootDir
+          );
+        }
+      }
+      this._options = { ...options };
+    }
+    Object.freeze(this._options);
   }
   /**
-   * Add route.
+   * Define route.
    *
-   * @param {string} remotePath
-   * @param {string} resourcePath
-   * @returns {object}
+   * @param {import('./static-route.js').StaticRouteDefinition} routeDef
+   * @returns {this}
    */
-  addRoute(remotePath, resourcePath) {
-    if (typeof remotePath !== "string") {
-      throw new import_js_format2.InvalidArgumentError(
-        "Remote path must be a String, but %v was given.",
-        remotePath
+  defineRoute(routeDef) {
+    if (!routeDef || typeof routeDef !== "object" || Array.isArray(routeDef)) {
+      throw new import_js_format3.InvalidArgumentError(
+        'Parameter "routeDef" must be an Object, but %v was given.',
+        routeDef
       );
     }
-    if (typeof resourcePath !== "string") {
-      throw new import_js_format2.InvalidArgumentError(
-        "Resource path must be a String, but %v was given.",
-        resourcePath
+    if (this._options.rootDir !== void 0 && !import_path2.default.isAbsolute(routeDef.resourcePath)) {
+      routeDef = { ...routeDef };
+      routeDef.resourcePath = import_path2.default.join(
+        this._options.rootDir,
+        routeDef.resourcePath
       );
     }
-    const debug = this.getDebuggerFor(this.addRoute);
-    resourcePath = import_path.default.resolve(resourcePath);
+    const debug = this.getDebuggerFor(this.defineRoute);
+    const route = new StaticRoute(routeDef);
     debug("Adding a new route.");
-    debug("Resource path is %v.", resourcePath);
-    debug("Remote path is %v.", remotePath);
-    let stats;
-    try {
-      stats = import_fs.default.statSync(resourcePath);
-    } catch (error) {
-      console.error(error);
-      throw new import_js_format2.InvalidArgumentError(
-        "Resource path %v does not exist.",
-        resourcePath
-      );
-    }
-    const isFile = stats.isFile();
-    debug("Resource type is %s.", isFile ? "File" : "Folder");
-    const normalizedRemotePath = normalizePath(remotePath);
-    const escapedRemotePath = escapeRegexp(normalizedRemotePath);
-    const regexp = isFile ? new RegExp(`^${escapedRemotePath}/*$`) : new RegExp(`^${escapedRemotePath}(?:$|\\/)`);
-    const route = new HttpStaticRoute(remotePath, resourcePath, regexp, isFile);
+    debug("Resource path is %v.", route.resourcePath);
+    debug("Remote path is %v.", route.remotePath);
+    debug("Resource type is %s.", route.isFile ? "File" : "Folder");
     this._routes.push(route);
     this._routes.sort((a, b) => b.remotePath.length - a.remotePath.length);
     return this;
   }
   /**
-   * Match route.
+   * Handle request.
    *
-   * @param {IncomingMessage} req
-   * @returns {object|undefined}
+   * @param {import('http').IncomingMessage} request
+   * @param {import('http').ServerResponse} response
+   * @returns {Promise<boolean>}
    */
-  matchRoute(req) {
-    if (!(req instanceof import_http.IncomingMessage)) {
-      throw new import_js_format2.InvalidArgumentError(
-        'Parameter "req" must be an instance of IncomingMessage, but %v was given.',
-        req
+  async handleRequest(request, response) {
+    const fileInfo = await this._findFileForRequest(request);
+    if (fileInfo !== void 0) {
+      this._sendFile(request, response, fileInfo);
+      return true;
+    }
+    return false;
+  }
+  /**
+   * Find file for request.
+   *
+   * @param {import('http').IncomingMessage} request
+   * @returns {Promise<FileInfo|undefined>|undefined}
+   */
+  async _findFileForRequest(request) {
+    if (!(request instanceof import_http.IncomingMessage)) {
+      throw new import_js_format3.InvalidArgumentError(
+        'Parameter "request" must be an instance of IncomingMessage, but %v was given.',
+        request
       );
     }
-    const debug = this.getDebuggerFor(this.matchRoute);
-    debug("Matching routes with incoming request.");
-    const url = (req.url || "/").replace(/\?.*$/, "");
-    debug("Incoming request is %s %v.", req.method, url);
-    if (req.method !== "GET" && req.method !== "HEAD") {
+    const debug = this.getDebuggerFor(this._findFileForRequest);
+    debug("File finding for an incoming request.");
+    debug("Incoming request %s %v.", request.method, request.url);
+    let requestPath;
+    try {
+      requestPath = decodeURIComponent(getPathnameFromUrl(request.url || ""));
+    } catch {
+      debug("Invalid URL encoding .");
+      return;
+    }
+    if (request.method !== "GET" && request.method !== "HEAD") {
       debug("Method not allowed.");
       return;
     }
+    if (requestPath.includes("//")) {
+      debug("Request path contains duplicate slashes.");
+      return;
+    }
+    if (!this._routes.length) {
+      debug("No registered routes.");
+      return;
+    }
     debug("Walking through %v routes.", this._routes.length);
-    const route = this._routes.find((route2) => {
-      const res = route2.regexp.test(url);
-      const phrase = res ? "matched" : "not matched";
-      debug("Resource %v %s.", route2.resourcePath, phrase);
-      return res;
-    });
-    route ? debug("Resource %v matched.", route.resourcePath) : debug("No route matched.");
-    return route;
+    for (const route of this._routes) {
+      const isMatched = route.regexp.test(requestPath);
+      if (isMatched) {
+        debug("Matched route %v.", route.remotePath);
+        let targetPath = route.resourcePath;
+        if (!route.isFile) {
+          const relativePath = requestPath.replace(route.regexp, "");
+          targetPath = import_path2.default.join(route.resourcePath, relativePath);
+        }
+        targetPath = import_path2.default.resolve(targetPath);
+        const resourceRoot = import_path2.default.resolve(route.resourcePath);
+        if (targetPath !== resourceRoot && !targetPath.startsWith(resourceRoot + import_path2.default.sep)) {
+          return;
+        }
+        const fileSize = await new Promise((resolve) => {
+          import_fs2.default.stat(targetPath, (statsError, stats) => {
+            if (statsError || stats.isDirectory()) {
+              resolve(void 0);
+              return;
+            }
+            resolve(stats.size);
+            return;
+          });
+        });
+        if (fileSize !== void 0) {
+          if (requestPath.endsWith("/")) {
+            continue;
+          }
+          debug("File found %v.", targetPath);
+          return { path: targetPath, size: fileSize };
+        }
+      }
+    }
+    debug("File not found.");
   }
   /**
-   * Send file by route.
+   * Send file.
    *
-   * @param {HttpStaticRoute} route
-   * @param {import('http').IncomingMessage} req
-   * @param {import('http').ServerResponse} res
+   * @param {import('http').IncomingMessage} request
+   * @param {import('http').ServerResponse} response
+   * @param {FileInfo} fileInfo
    */
-  sendFileByRoute(route, req, res) {
-    if (!(route instanceof HttpStaticRoute)) {
-      throw new import_js_format2.InvalidArgumentError(
-        'Parameter "route" must be an instance of HttpStaticRoute, but %v was given.',
-        route
-      );
-    }
-    if (!(req instanceof import_http.IncomingMessage)) {
-      throw new import_js_format2.InvalidArgumentError(
-        'Parameter "req" must be an instance of IncomingMessage, but %v was given.',
-        req
-      );
-    }
-    if (!(res instanceof import_http.ServerResponse)) {
-      throw new import_js_format2.InvalidArgumentError(
-        'Parameter "res" must be an instance of ServerResponse, but %v was given.',
-        res
-      );
-    }
-    const reqUrl = req.url || "/";
-    const reqPath = reqUrl.replace(/\?.*$/, "");
-    if (!this._options.trailingSlash && reqPath !== "/" && /\/$/.test(reqPath)) {
-      const searchMatch = reqUrl.match(/\?.*$/);
-      const search = searchMatch ? searchMatch[0] : "";
-      const normalizedPath = reqPath.replace(/\/{2,}/g, "/").replace(/\/+$/, "");
-      res.writeHead(302, { location: `${normalizedPath}${search}` });
-      res.end();
+  _sendFile(request, response, fileInfo) {
+    const debug = this.getDebuggerFor(this._sendFile);
+    debug("File sending for an incoming request.");
+    debug("Incoming request %s %v.", request.method, request.url);
+    debug("File path %v.", fileInfo.path);
+    debug("File size %v bytes.", fileInfo.size);
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      debug("Method not allowed.");
       return;
     }
-    if (/\/{2,}/.test(reqUrl)) {
-      const normalizedUrl = reqUrl.replace(/\/{2,}/g, "/");
-      res.writeHead(302, { location: normalizedUrl });
-      res.end();
-      return;
-    }
-    let targetPath = route.resourcePath;
-    if (!route.isFile) {
-      const relativePath = reqPath.replace(route.regexp, "");
-      targetPath = import_path.default.join(route.resourcePath, relativePath);
-    }
-    targetPath = import_path.default.resolve(targetPath);
-    const resourceRoot = import_path.default.resolve(route.resourcePath);
-    if (!targetPath.startsWith(resourceRoot)) {
-      res.writeHead(403, { "content-type": "text/plain" });
-      res.end("403 Forbidden");
-      return;
-    }
-    import_fs.default.stat(targetPath, (statsError, stats) => {
-      if (statsError) {
-        return this._handleFsError(statsError, res);
-      }
-      if (stats.isDirectory()) {
-        if (this._options.trailingSlash) {
-          if (/[^/]$/.test(reqPath)) {
-            const searchMatch = reqUrl.match(/\?.*$/);
-            const search = searchMatch ? searchMatch[0] : "";
-            const normalizedPath = reqPath.replace(/\/{2,}/g, "/");
-            res.writeHead(302, { location: `${normalizedPath}/${search}` });
-            res.end();
-            return;
-          }
-        }
-        targetPath = import_path.default.join(targetPath, "index.html");
-      } else {
-        if (reqPath !== "/" && /\/$/.test(reqPath)) {
-          const searchMatch = reqUrl.match(/\?.*$/);
-          const search = searchMatch ? searchMatch[0] : "";
-          const normalizedPath = reqPath.replace(/\/{2,}/g, "/").replace(/\/+$/, "");
-          res.writeHead(302, { location: `${normalizedPath}${search}` });
-          res.end();
-          return;
-        }
-      }
-      const extname = import_path.default.extname(targetPath);
-      const contentType = import_mime_types.default.contentType(extname) || "application/octet-stream";
-      const fileStream = (0, import_fs.createReadStream)(targetPath);
-      fileStream.on("error", (error) => {
-        this._handleFsError(error, res);
+    const extname = import_path2.default.extname(fileInfo.path);
+    const contentType = import_mime_types.default.contentType(extname) || "application/octet-stream";
+    const fileStream = (0, import_fs2.createReadStream)(fileInfo.path);
+    fileStream.on("error", (error) => {
+      debug("Unable to open a file stream.");
+      this._handleFsError(error, response);
+    });
+    fileStream.on("open", () => {
+      response.writeHead(200, {
+        "Content-Type": contentType,
+        "Content-Length": fileInfo.size
       });
-      fileStream.on("open", () => {
-        res.writeHead(200, { "content-type": contentType });
-        if (req.method === "HEAD") {
-          res.end();
-          return;
-        }
-        fileStream.pipe(res);
-      });
-      req.on("close", () => {
+      if (request.method === "HEAD") {
+        response.end();
+        debug("Response has been sent without a body for the HEAD request.");
         fileStream.destroy();
-      });
+        return;
+      }
+      fileStream.pipe(response);
+    });
+    request.on("close", () => {
+      debug("File has been sent.");
+      fileStream.destroy();
     });
   }
   /**
    * Handle filesystem error.
    *
    * @param {object} error
-   * @param {object} res
+   * @param {object} response
    * @returns {undefined}
    */
-  _handleFsError(error, res) {
-    if (res.headersSent) {
+  _handleFsError(error, response) {
+    if (response.headersSent) {
+      response.destroy();
       return;
     }
     if ("code" in error && error.code === "ENOENT") {
-      res.writeHead(404, { "content-type": "text/plain" });
-      res.write("404 Not Found");
-      res.end();
+      response.writeHead(404, { "Content-Type": "text/plain" });
+      response.write("404 Not Found");
+      response.end();
     } else {
-      res.writeHead(500, { "content-type": "text/plain" });
-      res.write("500 Internal Server Error");
-      res.end();
+      response.writeHead(500, { "Content-Type": "text/plain" });
+      response.write("500 Internal Server Error");
+      response.end();
     }
   }
 };
@@ -374,6 +403,6 @@ __name(_HttpStaticRouter, "HttpStaticRouter");
 var HttpStaticRouter = _HttpStaticRouter;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  HttpStaticRoute,
-  HttpStaticRouter
+  HttpStaticRouter,
+  StaticRoute
 });

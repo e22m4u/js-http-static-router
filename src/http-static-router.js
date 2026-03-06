@@ -1,11 +1,17 @@
 import path from 'path';
 import mimeTypes from 'mime-types';
+import {IncomingMessage} from 'http';
 import fs, {createReadStream} from 'fs';
-import {IncomingMessage, ServerResponse} from 'http';
+import {StaticRoute} from './static-route.js';
+import {getPathnameFromUrl} from './utils/index.js';
 import {InvalidArgumentError} from '@e22m4u/js-format';
-import {HttpStaticRoute} from './http-static-route.js';
-import {escapeRegexp, normalizePath} from './utils/index.js';
 import {DebuggableService, isServiceContainer} from '@e22m4u/js-service';
+
+/**
+ * @typedef {object} FileInfo
+ * @property {string} path
+ * @property {number} size
+ */
 
 /**
  * Http static router.
@@ -15,92 +21,108 @@ export class HttpStaticRouter extends DebuggableService {
    * Routes.
    *
    * @protected
-   * @type {HttpStaticRoute[]}
+   * @type {StaticRoute[]}
    */
   _routes = [];
 
   /**
    * Options.
    *
-   * @type {object}
+   * @type {import('./http-static-router.js').HttpStaticRouterOptions}
+   * @protected
    */
   _options = {};
 
   /**
    * Constructor.
    *
-   * @param {object} options
+   * @param {import('@e22m4u/js-service').ServiceContainer|import('./http-static-router.js').HttpStaticRouterOptions} containerOrOptions
+   * @param {import('./http-static-router.js').HttpStaticRouterOptions} options
    */
-  constructor(options = {}) {
-    if (isServiceContainer(options)) {
-      options = {};
-    }
-    super(undefined, {
+  constructor(containerOrOptions, options) {
+    const debugOptions = {
       noEnvironmentNamespace: true,
       namespace: 'jsHttpStaticRouter',
-    });
-    if (!options || typeof options !== 'object' || Array.isArray(options)) {
-      throw new InvalidArgumentError(
-        'Parameter "options" must be an Object, but %v was given.',
-        options,
-      );
-    }
-    if (options.trailingSlash !== undefined) {
-      if (typeof options.trailingSlash !== 'boolean') {
+    };
+    if (isServiceContainer(containerOrOptions)) {
+      super(containerOrOptions, debugOptions);
+    } else if (containerOrOptions !== undefined) {
+      if (
+        !containerOrOptions ||
+        typeof containerOrOptions !== 'object' ||
+        Array.isArray(containerOrOptions)
+      ) {
         throw new InvalidArgumentError(
-          'Option "trailingSlash" must be a Boolean, but %v was given.',
-          options.trailingSlash,
+          'Parameter "containerOrOptions" must be an Object ' +
+            'or an instance of ServiceContainer, but %v was given.',
+          options,
         );
       }
+      super(undefined, debugOptions);
+      if (options === undefined) {
+        options = containerOrOptions;
+        containerOrOptions = undefined;
+      }
+    } else {
+      super(undefined, debugOptions);
     }
-    this._options = {...options};
+    // options
+    if (options !== undefined) {
+      if (!options || typeof options !== 'object' || Array.isArray(options)) {
+        throw new InvalidArgumentError(
+          'Parameter "options" must be an Object, but %v was given.',
+          options,
+        );
+      }
+      // options.rootDir
+      if (options.rootDir !== undefined) {
+        if (typeof options.rootDir !== 'string') {
+          throw new InvalidArgumentError(
+            'Option "rootDir" must be a String, but %v was given.',
+            options.rootDir,
+          );
+        }
+        if (!path.isAbsolute(options.rootDir)) {
+          throw new InvalidArgumentError(
+            'Option "rootDir" must be an absolute path, but %v was given.',
+            options.rootDir,
+          );
+        }
+      }
+      this._options = {...options};
+    }
+    Object.freeze(this._options);
   }
 
   /**
-   * Add route.
+   * Define route.
    *
-   * @param {string} remotePath
-   * @param {string} resourcePath
-   * @returns {object}
+   * @param {import('./static-route.js').StaticRouteDefinition} routeDef
+   * @returns {this}
    */
-  addRoute(remotePath, resourcePath) {
-    if (typeof remotePath !== 'string') {
+  defineRoute(routeDef) {
+    if (!routeDef || typeof routeDef !== 'object' || Array.isArray(routeDef)) {
       throw new InvalidArgumentError(
-        'Remote path must be a String, but %v was given.',
-        remotePath,
+        'Parameter "routeDef" must be an Object, but %v was given.',
+        routeDef,
       );
     }
-    if (typeof resourcePath !== 'string') {
-      throw new InvalidArgumentError(
-        'Resource path must be a String, but %v was given.',
-        resourcePath,
+    if (
+      this._options.rootDir !== undefined &&
+      !path.isAbsolute(routeDef.resourcePath)
+    ) {
+      routeDef = {...routeDef};
+      routeDef.resourcePath = path.join(
+        this._options.rootDir,
+        routeDef.resourcePath,
       );
     }
-    const debug = this.getDebuggerFor(this.addRoute);
-    resourcePath = path.resolve(resourcePath);
+    const debug = this.getDebuggerFor(this.defineRoute);
+    const route = new StaticRoute(routeDef);
     debug('Adding a new route.');
-    debug('Resource path is %v.', resourcePath);
-    debug('Remote path is %v.', remotePath);
-    let stats;
-    try {
-      stats = fs.statSync(resourcePath);
-    } catch (error) {
-      // если ресурс не существует в момент старта,
-      // это может быть ошибкой конфигурации
-      console.error(error);
-      throw new InvalidArgumentError(
-        'Resource path %v does not exist.',
-        resourcePath,
-      );
-    }
-    const isFile = stats.isFile();
-    debug('Resource type is %s.', isFile ? 'File' : 'Folder');
-    const normalizedRemotePath = normalizePath(remotePath);
-    const escapedRemotePath = escapeRegexp(normalizedRemotePath);
-    const regexp = isFile
-      ? new RegExp(`^${escapedRemotePath}/*$`)
-      : new RegExp(`^${escapedRemotePath}(?:$|\\/)`);
-    const route = new HttpStaticRoute(remotePath, resourcePath, regexp, isFile);
+    debug('Resource path is %v.', route.resourcePath);
+    debug('Remote path is %v.', route.remotePath);
+    debug('Resource type is %s.', route.isFile ? 'File' : 'Folder');
     this._routes.push(route);
     // самые длинные пути проверяются первыми,
     // чтобы избежать коллизий при поиске маршрута
@@ -109,186 +131,165 @@ export class HttpStaticRouter extends DebuggableService {
   }
 
   /**
-   * Match route.
+   * Handle request.
    *
-   * @param {IncomingMessage} req
-   * @returns {object|undefined}
+   * @param {import('http').IncomingMessage} request
+   * @param {import('http').ServerResponse} response
+   * @returns {Promise<boolean>}
    */
-  matchRoute(req) {
-    if (!(req instanceof IncomingMessage)) {
-      throw new InvalidArgumentError(
-        'Parameter "req" must be an instance of IncomingMessage, ' +
-          'but %v was given.',
-        req,
-      );
+  async handleRequest(request, response) {
+    const fileInfo = await this._findFileForRequest(request);
+    if (fileInfo !== undefined) {
+      this._sendFile(request, response, fileInfo);
+      return true;
     }
-    const debug = this.getDebuggerFor(this.matchRoute);
-    debug('Matching routes with incoming request.');
-    const url = (req.url || '/').replace(/\?.*$/, '');
-    debug('Incoming request is %s %v.', req.method, url);
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      debug('Method not allowed.');
-      return;
-    }
-    debug('Walking through %v routes.', this._routes.length);
-    const route = this._routes.find(route => {
-      const res = route.regexp.test(url);
-      const phrase = res ? 'matched' : 'not matched';
-      debug('Resource %v %s.', route.resourcePath, phrase);
-      return res;
-    });
-    route
-      ? debug('Resource %v matched.', route.resourcePath)
-      : debug('No route matched.');
-    return route;
+    return false;
   }
 
   /**
-   * Send file by route.
+   * Find file for request.
    *
-   * @param {HttpStaticRoute} route
-   * @param {import('http').IncomingMessage} req
-   * @param {import('http').ServerResponse} res
+   * @param {import('http').IncomingMessage} request
+   * @returns {Promise<FileInfo|undefined>|undefined}
    */
-  sendFileByRoute(route, req, res) {
-    if (!(route instanceof HttpStaticRoute)) {
+  async _findFileForRequest(request) {
+    if (!(request instanceof IncomingMessage)) {
       throw new InvalidArgumentError(
-        'Parameter "route" must be an instance of HttpStaticRoute, ' +
+        'Parameter "request" must be an instance of IncomingMessage, ' +
           'but %v was given.',
-        route,
+        request,
       );
     }
-    if (!(req instanceof IncomingMessage)) {
-      throw new InvalidArgumentError(
-        'Parameter "req" must be an instance of IncomingMessage, ' +
-          'but %v was given.',
-        req,
-      );
-    }
-    if (!(res instanceof ServerResponse)) {
-      throw new InvalidArgumentError(
-        'Parameter "res" must be an instance of ServerResponse, ' +
-          'but %v was given.',
-        res,
-      );
-    }
-    const reqUrl = req.url || '/';
-    const reqPath = reqUrl.replace(/\?.*$/, '');
-    // если параметр "trailingSlash" не активен, и адрес запроса
-    // не указывает на корень, но содержит косую черту в конце пути,
-    // то косая черта принудительно удаляется и выполняется редирект
-    if (
-      !this._options.trailingSlash &&
-      reqPath !== '/' &&
-      /\/$/.test(reqPath)
-    ) {
-      const searchMatch = reqUrl.match(/\?.*$/);
-      const search = searchMatch ? searchMatch[0] : '';
-      const normalizedPath = reqPath
-        .replace(/\/{2,}/g, '/') // удаление дублирующих слешей
-        .replace(/\/+$/, ''); // удаление завершающего слеша
-      res.writeHead(302, {location: `${normalizedPath}${search}`});
-      res.end();
+    const debug = this.getDebuggerFor(this._findFileForRequest);
+    debug('File finding for an incoming request.');
+    debug('Incoming request %s %v.', request.method, request.url);
+    let requestPath;
+    try {
+      requestPath = decodeURIComponent(getPathnameFromUrl(request.url || ''));
+    } catch {
+      debug('Invalid URL encoding .');
       return;
     }
-    // если адрес запроса содержит дублирующие слеши,
-    // то адрес нормализуется и выполняется редирект
-    if (/\/{2,}/.test(reqUrl)) {
-      const normalizedUrl = reqUrl.replace(/\/{2,}/g, '/');
-      res.writeHead(302, {location: normalizedUrl});
-      res.end();
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      debug('Method not allowed.');
       return;
     }
-    // если ресурс ссылается на папку, то из адреса запроса
-    // извлекается дополнительная часть (если присутствует),
-    // и добавляется к адресу ресурса
-    let targetPath = route.resourcePath;
-    if (!route.isFile) {
-      // извлечение относительного пути в дополнение к адресу
-      // ресурса путем удаления из адреса запроса той части,
-      // которая была указана при объявлении маршрута
-      const relativePath = reqPath.replace(route.regexp, '');
-      // объединение адреса ресурса
-      // с дополнительной частью
-      targetPath = path.join(route.resourcePath, relativePath);
-    }
-    // если обнаружена попытка выхода за пределы
-    // корневой директории, то выбрасывается ошибка
-    targetPath = path.resolve(targetPath);
-    const resourceRoot = path.resolve(route.resourcePath);
-    if (!targetPath.startsWith(resourceRoot)) {
-      res.writeHead(403, {'content-type': 'text/plain'});
-      res.end('403 Forbidden');
+    if (requestPath.includes('//')) {
+      debug('Request path contains duplicate slashes.');
       return;
     }
-    // подстановка индекс-файла (для папок),
-    // установка заголовков и отправка потока
-    fs.stat(targetPath, (statsError, stats) => {
-      if (statsError) {
-        return this._handleFsError(statsError, res);
-      }
-      if (stats.isDirectory()) {
-        // если активен параметр "trailingSlash", и адрес директории
-        // не содержит косую черту в конце пути, то косая черта
-        // добавляется принудительно и выполняется редирект
-        if (this._options.trailingSlash) {
-          // так как в html обычно используются относительные пути,
-          // то адрес директории статических ресурсов должен завершаться
-          // косой чертой, чтобы файлы стилей и изображений загружались
-          // из текущего уровня, а не обращались на уровень выше
-          if (/[^/]$/.test(reqPath)) {
-            const searchMatch = reqUrl.match(/\?.*$/);
-            const search = searchMatch ? searchMatch[0] : '';
-            const normalizedPath = reqPath.replace(/\/{2,}/g, '/');
-            res.writeHead(302, {location: `${normalizedPath}/${search}`});
-            res.end();
+    if (!this._routes.length) {
+      debug('No registered routes.');
+      return;
+    }
+    debug('Walking through %v routes.', this._routes.length);
+    for (const route of this._routes) {
+      const isMatched = route.regexp.test(requestPath);
+      if (isMatched) {
+        debug('Matched route %v.', route.remotePath);
+        // если ресурс ссылается на папку, то из адреса запроса
+        // извлекается дополнительная часть (если присутствует),
+        // и формируется целевой путь файловой системы
+        let targetPath = route.resourcePath;
+        if (!route.isFile) {
+          // извлечение относительного пути в дополнение к адресу
+          // ресурса путем удаления из адреса запроса той части,
+          // которая была указана при объявлении маршрута
+          const relativePath = requestPath.replace(route.regexp, '');
+          // объединение адреса ресурса
+          // с дополнительной частью
+          targetPath = path.join(route.resourcePath, relativePath);
+        }
+        // если обнаружена попытка выхода за пределы
+        // директории маршрута, то возвращается undefined
+        targetPath = path.resolve(targetPath);
+        const resourceRoot = path.resolve(route.resourcePath);
+        if (
+          targetPath !== resourceRoot &&
+          !targetPath.startsWith(resourceRoot + path.sep)
+        ) {
+          return;
+        }
+        // с определением размера файла одновременно выполняется
+        // отсечение отсутствующих файлов и директорий, в таких
+        // случаях значение размера будет является undefined
+        const fileSize = await new Promise(resolve => {
+          fs.stat(targetPath, (statsError, stats) => {
+            if (statsError || stats.isDirectory()) {
+              resolve(undefined);
+              return;
+            }
+            resolve(stats.size);
             return;
+          });
+        });
+        // если размер файла определен, то поиск
+        // прерывается и возвращается информация
+        if (fileSize !== undefined) {
+          // если файл найден, но запрос заканчивается
+          // на слеш, то файл должен быть проигнорирован
+          if (requestPath.endsWith('/')) {
+            continue;
           }
-        }
-        // если целевой путь указывает на папку,
-        // то подставляется index.html
-        targetPath = path.join(targetPath, 'index.html');
-      } else {
-        // если адрес файла не указывает на корень и в конце пути
-        // содержит косую черту, то косая черта принудительно
-        // удаляется и выполняется редирект
-        if (reqPath !== '/' && /\/$/.test(reqPath)) {
-          const searchMatch = reqUrl.match(/\?.*$/);
-          const search = searchMatch ? searchMatch[0] : '';
-          const normalizedPath = reqPath
-            .replace(/\/{2,}/g, '/') // удаление дублирующих слешей
-            .replace(/\/+$/, ''); // удаление завершающего слеша
-          res.writeHead(302, {location: `${normalizedPath}${search}`});
-          res.end();
-          return;
+          debug('File found %v.', targetPath);
+          return {path: targetPath, size: fileSize};
         }
       }
-      // формирование заголовка "content-type"
-      // в зависимости от расширения файла
-      const extname = path.extname(targetPath);
-      const contentType =
-        mimeTypes.contentType(extname) || 'application/octet-stream';
-      // файл читается и отправляется частями,
-      // что значительно снижает использование памяти
-      const fileStream = createReadStream(targetPath);
-      fileStream.on('error', error => {
-        this._handleFsError(error, res);
+    }
+    debug('File not found.');
+  }
+
+  /**
+   * Send file.
+   *
+   * @param {import('http').IncomingMessage} request
+   * @param {import('http').ServerResponse} response
+   * @param {FileInfo} fileInfo
+   */
+  _sendFile(request, response, fileInfo) {
+    const debug = this.getDebuggerFor(this._sendFile);
+    debug('File sending for an incoming request.');
+    debug('Incoming request %s %v.', request.method, request.url);
+    debug('File path %v.', fileInfo.path);
+    debug('File size %v bytes.', fileInfo.size);
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      debug('Method not allowed.');
+      return;
+    }
+    // формирование заголовка "content-type"
+    // в зависимости от расширения файла
+    const extname = path.extname(fileInfo.path);
+    const contentType =
+      mimeTypes.contentType(extname) || 'application/octet-stream';
+    // файл читается и отправляется частями,
+    // что значительно снижает использование памяти
+    const fileStream = createReadStream(fileInfo.path);
+    fileStream.on('error', error => {
+      debug('Unable to open a file stream.');
+      this._handleFsError(error, response);
+    });
+    // отправка заголовка 200, только после
+    // этого начинается отдача файла
+    fileStream.on('open', () => {
+      response.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': fileInfo.size,
       });
-      // отправка заголовка 200, только после
-      // этого начинается отдача файла
-      fileStream.on('open', () => {
-        res.writeHead(200, {'content-type': contentType});
-        // для HEAD запроса отправляются
-        // только заголовки (без тела)
-        if (req.method === 'HEAD') {
-          res.end();
-          return;
-        }
-        fileStream.pipe(res);
-      });
-      req.on('close', () => {
+      // для HEAD запроса отправляются
+      // только заголовки (без тела)
+      if (request.method === 'HEAD') {
+        response.end();
+        debug('Response has been sent without a body for the HEAD request.');
+        // важно закрыть файловый поток, чтобы операционная
+        // система не исчерпала лимит открытых файлов
         fileStream.destroy();
-      });
+        return;
+      }
+      fileStream.pipe(response);
+    });
+    request.on('close', () => {
+      debug('File has been sent.');
+      fileStream.destroy();
     });
   }
 
@@ -296,21 +297,22 @@ export class HttpStaticRouter extends DebuggableService {
    * Handle filesystem error.
    *
    * @param {object} error
-   * @param {object} res
+   * @param {object} response
    * @returns {undefined}
    */
-  _handleFsError(error, res) {
-    if (res.headersSent) {
+  _handleFsError(error, response) {
+    if (response.headersSent) {
+      response.destroy();
       return;
     }
     if ('code' in error && error.code === 'ENOENT') {
-      res.writeHead(404, {'content-type': 'text/plain'});
-      res.write('404 Not Found');
-      res.end();
+      response.writeHead(404, {'Content-Type': 'text/plain'});
+      response.write('404 Not Found');
+      response.end();
     } else {
-      res.writeHead(500, {'content-type': 'text/plain'});
-      res.write('500 Internal Server Error');
-      res.end();
+      response.writeHead(500, {'Content-Type': 'text/plain'});
+      response.write('500 Internal Server Error');
+      response.end();
     }
   }
 }
