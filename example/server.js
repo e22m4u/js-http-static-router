@@ -3,10 +3,10 @@ import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 
 // создание экземпляра маршрутизатора
 const staticRouter = new HttpStaticRouter({
-  // при использовании опции "rootDir", относительные пути
+  // при использовании опции "baseDir", относительные пути
   // в регистрируемых маршрутах будут разрешаться относительно
   // указанного адреса файловой системы
-  rootDir: import.meta.dirname,
+  baseDir: import.meta.dirname,
 });
 
 // экспозиция содержимого директории "/static"

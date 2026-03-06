@@ -74,18 +74,18 @@ export class HttpStaticRouter extends DebuggableService {
           options,
         );
       }
-      // options.rootDir
-      if (options.rootDir !== undefined) {
-        if (typeof options.rootDir !== 'string') {
+      // options.baseDir
+      if (options.baseDir !== undefined) {
+        if (typeof options.baseDir !== 'string') {
           throw new InvalidArgumentError(
-            'Option "rootDir" must be a String, but %v was given.',
-            options.rootDir,
+            'Option "baseDir" must be a String, but %v was given.',
+            options.baseDir,
           );
         }
-        if (!path.isAbsolute(options.rootDir)) {
+        if (!path.isAbsolute(options.baseDir)) {
           throw new InvalidArgumentError(
-            'Option "rootDir" must be an absolute path, but %v was given.',
-            options.rootDir,
+            'Option "baseDir" must be an absolute path, but %v was given.',
+            options.baseDir,
           );
         }
       }
@@ -108,12 +108,12 @@ export class HttpStaticRouter extends DebuggableService {
       );
     }
     if (
-      this._options.rootDir !== undefined &&
+      this._options.baseDir !== undefined &&
       !path.isAbsolute(routeDef.resourcePath)
     ) {
       routeDef = {...routeDef};
       routeDef.resourcePath = path.join(
-        this._options.rootDir,
+        this._options.baseDir,
         routeDef.resourcePath,
       );
     }

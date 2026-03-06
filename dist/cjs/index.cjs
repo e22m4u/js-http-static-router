@@ -200,17 +200,17 @@ var _HttpStaticRouter = class _HttpStaticRouter extends import_js_service.Debugg
           options
         );
       }
-      if (options.rootDir !== void 0) {
-        if (typeof options.rootDir !== "string") {
+      if (options.baseDir !== void 0) {
+        if (typeof options.baseDir !== "string") {
           throw new import_js_format3.InvalidArgumentError(
-            'Option "rootDir" must be a String, but %v was given.',
-            options.rootDir
+            'Option "baseDir" must be a String, but %v was given.',
+            options.baseDir
           );
         }
-        if (!import_path2.default.isAbsolute(options.rootDir)) {
+        if (!import_path2.default.isAbsolute(options.baseDir)) {
           throw new import_js_format3.InvalidArgumentError(
-            'Option "rootDir" must be an absolute path, but %v was given.',
-            options.rootDir
+            'Option "baseDir" must be an absolute path, but %v was given.',
+            options.baseDir
           );
         }
       }
@@ -231,10 +231,10 @@ var _HttpStaticRouter = class _HttpStaticRouter extends import_js_service.Debugg
         routeDef
       );
     }
-    if (this._options.rootDir !== void 0 && !import_path2.default.isAbsolute(routeDef.resourcePath)) {
+    if (this._options.baseDir !== void 0 && !import_path2.default.isAbsolute(routeDef.resourcePath)) {
       routeDef = { ...routeDef };
       routeDef.resourcePath = import_path2.default.join(
-        this._options.rootDir,
+        this._options.baseDir,
         routeDef.resourcePath
       );
     }

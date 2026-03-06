@@ -7,7 +7,7 @@ import {DebuggableService, ServiceContainer} from '@e22m4u/js-service';
  * Http static router options.
  */
 export type HttpStaticRouterOptions = {
-  rootDir?: string;
+  baseDir?: string;
 };
 
 /**
