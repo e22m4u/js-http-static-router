@@ -41,14 +41,14 @@ const staticRouter = new HttpStaticRouter({
 // только для ESM начиная с Node.js 20.11.0
 
 // экспозиция содержимого директории "/static"
-// доступным по адресу "/assets/{file_name}"
+// для доступа по адресу "/assets/{file_name}"
 staticRouter.defineRoute({
   remotePath: '/assets',     // путь маршрута
   resourcePath: '../static', // файловый путь
 });
 
 // объявление файла "./index.html"
-// доступным по адресу "/home"
+// для доступа по адресу "/home"
 staticRouter.defineRoute({
   remotePath: '/home',
   resourcePath: './static/index.html',
