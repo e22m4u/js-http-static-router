@@ -185,8 +185,8 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
     } else if (containerOrOptions !== void 0) {
       if (!containerOrOptions || typeof containerOrOptions !== "object" || Array.isArray(containerOrOptions)) {
         throw new import_js_format3.InvalidArgumentError(
-          'Parameter "containerOrOptions" must be an Object or an instance of ServiceContainer, but %v was given.',
-          options
+          "First parameter must be an Object or an instance of ServiceContainer, but %v was given.",
+          containerOrOptions
         );
       }
       super(void 0, debugOptions);

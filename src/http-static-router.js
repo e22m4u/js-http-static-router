@@ -53,9 +53,9 @@ export class HttpStaticRouter extends DebuggableService {
         Array.isArray(containerOrOptions)
       ) {
         throw new InvalidArgumentError(
-          'Parameter "containerOrOptions" must be an Object ' +
-            'or an instance of ServiceContainer, but %v was given.',
-          options,
+          'First parameter must be an Object or an instance ' +
+            'of ServiceContainer, but %v was given.',
+          containerOrOptions,
         );
       }
       super(undefined, debugOptions);
