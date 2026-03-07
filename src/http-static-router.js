@@ -98,13 +98,21 @@ export class HttpStaticRouter extends DebuggableService {
    * Define route.
    *
    * @param {import('./static-route.js').StaticRouteDefinition} routeDef
-   * @returns {this}
+   * @returns {import('./static-route.js').StaticRoute}
    */
   defineRoute(routeDef) {
+    // options
     if (!routeDef || typeof routeDef !== 'object' || Array.isArray(routeDef)) {
       throw new InvalidArgumentError(
         'Parameter "routeDef" must be an Object, but %v was given.',
         routeDef,
+      );
+    }
+    // options.resourcePath
+    if (typeof routeDef.resourcePath !== 'string') {
+      throw new InvalidArgumentError(
+        'Option "resourcePath" must be a String, but %v was given.',
+        routeDef.resourcePath,
       );
     }
     if (
@@ -114,6 +122,16 @@ export class HttpStaticRouter extends DebuggableService {
       routeDef = {...routeDef};
       routeDef.resourcePath = path.join(
         this._options.baseDir,
+        routeDef.resourcePath,
+      );
+    }
+    if (
+      this._options.baseDir === undefined &&
+      !path.isAbsolute(routeDef.resourcePath)
+    ) {
+      throw new InvalidArgumentError(
+        'Option "resourcePath" must be an absolute path when the router ' +
+          'option "basePath" is not specified, but %v was given.',
         routeDef.resourcePath,
       );
     }
@@ -127,7 +145,7 @@ export class HttpStaticRouter extends DebuggableService {
     // самые длинные пути проверяются первыми,
     // чтобы избежать коллизий при поиске маршрута
     this._routes.sort((a, b) => b.remotePath.length - a.remotePath.length);
-    return this;
+    return route;
   }
 
   /**

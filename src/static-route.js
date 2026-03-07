@@ -56,7 +56,7 @@ export class StaticRoute {
     }
     if (!routeDef.remotePath.startsWith('/')) {
       throw new InvalidArgumentError(
-        'Option "remotePath" must starts with "/", but %v was given.',
+        'Option "remotePath" must start with "/", but %v was given.',
         routeDef.remotePath,
       );
     }
@@ -67,15 +67,20 @@ export class StaticRoute {
         routeDef.resourcePath,
       );
     }
-    const resourcePath = path.resolve(routeDef.resourcePath);
+    if (!path.isAbsolute(routeDef.resourcePath)) {
+      throw new InvalidArgumentError(
+        'Option "resourcePath" must be an absolute path, but %v was given.',
+        routeDef.resourcePath,
+      );
+    }
     let stats;
     try {
-      stats = fs.statSync(resourcePath);
+      stats = fs.statSync(routeDef.resourcePath);
     } catch (error) {
       console.error(error);
       throw new InvalidArgumentError(
         'Resource path %v does not exist.',
-        resourcePath,
+        routeDef.resourcePath,
       );
     }
     const isFile = stats.isFile();
@@ -84,7 +89,7 @@ export class StaticRoute {
       ? new RegExp(`^${escapedRemotePath}$`)
       : new RegExp(`^${escapedRemotePath}(?:$|\\/)`);
     this.remotePath = routeDef.remotePath;
-    this.resourcePath = resourcePath;
+    this.resourcePath = routeDef.resourcePath;
     this.regexp = regexp;
     this.isFile = isFile;
   }

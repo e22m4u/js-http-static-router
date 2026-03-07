@@ -1,6 +1,6 @@
 import {ServerResponse} from 'node:http';
 import {IncomingMessage} from 'node:http';
-import {StaticRouteDefinition} from './static-route.js';
+import {StaticRoute, StaticRouteDefinition} from './static-route.js';
 import {DebuggableService, ServiceContainer} from '@e22m4u/js-service';
 
 /**
@@ -41,7 +41,7 @@ export declare class HttpStaticRouter extends DebuggableService {
    *
    * @param routeDef
    */
-  defineRoute(routeDef: StaticRouteDefinition): this;
+  defineRoute(routeDef: StaticRouteDefinition): StaticRoute;
 
   /**
    * Handle request.
