@@ -213,5 +213,36 @@ describe('HttpStaticRouter', function () {
       });
       expect(route.resourcePath).to.be.eq(ABS_RABBIT_FILE_PATH);
     });
+
+    it('should register a new route with the given route definition', function () {
+      const S = new HttpStaticRouter();
+      const route1 = S.defineRoute({
+        remotePath: '/first',
+        resourcePath: ABS_RABBIT_FILE_PATH,
+      });
+      const route2 = S.defineRoute({
+        remotePath: '/second',
+        resourcePath: ABS_RABBIT_FILE_PATH,
+      });
+      expect(S['_routes']).to.include(route1);
+      expect(S['_routes']).to.include(route2);
+    });
+
+    it('should sort registered routes by length of the remote path', function () {
+      const S = new HttpStaticRouter();
+      const route1 = S.defineRoute({
+        remotePath: '/foo',
+        resourcePath: ABS_RABBIT_FILE_PATH,
+      });
+      const route2 = S.defineRoute({
+        remotePath: '/fooBarBaz',
+        resourcePath: ABS_RABBIT_FILE_PATH,
+      });
+      const route3 = S.defineRoute({
+        remotePath: '/fooBar',
+        resourcePath: ABS_RABBIT_FILE_PATH,
+      });
+      expect(S['_routes']).to.be.eql([route2, route3, route1]);
+    });
   });
 });
