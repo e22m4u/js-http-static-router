@@ -48,7 +48,10 @@ __name(escapeRegexp, "escapeRegexp");
 
 // src/static-route.js
 var import_js_format = require("@e22m4u/js-format");
-var _StaticRoute = class _StaticRoute {
+var StaticRoute = class {
+  static {
+    __name(this, "StaticRoute");
+  }
   /**
    * Remote path.
    *
@@ -123,8 +126,6 @@ var _StaticRoute = class _StaticRoute {
     this.isFile = isFile;
   }
 };
-__name(_StaticRoute, "StaticRoute");
-var StaticRoute = _StaticRoute;
 
 // src/http-static-router.js
 var import_path2 = __toESM(require("path"), 1);
@@ -150,7 +151,10 @@ __name(getPathnameFromUrl, "getPathnameFromUrl");
 // src/http-static-router.js
 var import_js_format3 = require("@e22m4u/js-format");
 var import_js_service = require("@e22m4u/js-service");
-var _HttpStaticRouter = class _HttpStaticRouter extends import_js_service.DebuggableService {
+var HttpStaticRouter = class extends import_js_service.DebuggableService {
+  static {
+    __name(this, "HttpStaticRouter");
+  }
   /**
    * Routes.
    *
@@ -399,8 +403,6 @@ var _HttpStaticRouter = class _HttpStaticRouter extends import_js_service.Debugg
     }
   }
 };
-__name(_HttpStaticRouter, "HttpStaticRouter");
-var HttpStaticRouter = _HttpStaticRouter;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   HttpStaticRouter,
