@@ -40,18 +40,25 @@ const staticRouter = new HttpStaticRouter({
 // доступ к import.meta.dirname возможен
 // только для ESM начиная с Node.js 20.11.0
 
+// объявление файла "./index.html"
+// в качестве индексной страницы
+staticRouter.defineRoute({
+  remotePath: '/',
+  resourcePath: '../static/index.html',
+});
+
+// объявление файла "./page.html"
+// доступным по адресу "/page"
+staticRouter.defineRoute({
+  remotePath: '/page',
+  resourcePath: '../static/page.html',
+});
+
 // экспозиция содержимого директории "/static"
 // для доступа по адресу "/assets/{file_name}"
 staticRouter.defineRoute({
-  remotePath: '/assets',     // путь маршрута
-  resourcePath: '../static', // файловый путь
-});
-
-// объявление файла "./index.html"
-// для доступа по адресу "/home"
-staticRouter.defineRoute({
-  remotePath: '/home',
-  resourcePath: './static/index.html',
+  remotePath: '/assets',
+  resourcePath: '../static',
 });
 
 // создание HTTP сервера и определение
@@ -69,8 +76,10 @@ server.on('request', async (req, res) => {
 server.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
   console.log('Try to open:');
-  console.log('http://localhost:3000/home');
-  console.log('http://localhost:3000/assets/file.txt');
+  console.log('http://localhost:3000');
+  console.log('http://localhost:3000/page');
+  console.log('http://localhost:3000/assets/rabbit.txt');
+  console.log('http://localhost:3000/assets/nested/heart.txt');
 });
 ```
 

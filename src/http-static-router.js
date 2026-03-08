@@ -263,10 +263,6 @@ export class HttpStaticRouter extends DebuggableService {
     debug('Incoming request %s %v.', request.method, request.url);
     debug('File path %v.', fileInfo.path);
     debug('File size %v bytes.', fileInfo.size);
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      debug('Method not allowed.');
-      return;
-    }
     // формирование заголовка "content-type"
     // в зависимости от расширения файла
     const extname = path.extname(fileInfo.path);

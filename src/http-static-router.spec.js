@@ -5,12 +5,12 @@ import {createRequestMock} from './utils/index.js';
 import {ServiceContainer} from '@e22m4u/js-service';
 import {HttpStaticRouter} from './http-static-router.js';
 
-const REL_FIXTURES_DIR = '../fixtures';
-const REL_RABBIT_FILE = path.join(REL_FIXTURES_DIR, '/rabbit.txt');
-const REL_HEART_FILE = path.join(REL_FIXTURES_DIR, '/nested/heart.txt');
+const REL_STATIC_DIR = '../static';
+const REL_RABBIT_FILE = path.join(REL_STATIC_DIR, '/rabbit.txt');
+const REL_HEART_FILE = path.join(REL_STATIC_DIR, '/nested/heart.txt');
 const ABS_RABBIT_FILE = path.join(import.meta.dirname, REL_RABBIT_FILE);
 const ABS_HEART_FILE = path.join(import.meta.dirname, REL_HEART_FILE);
-const ABS_FIXTURES_DIR = path.join(import.meta.dirname, REL_FIXTURES_DIR);
+const ABS_STATIC_DIR = path.join(import.meta.dirname, REL_STATIC_DIR);
 const RABBIT_FILE_SIZE = 824;
 const HEART_FILE_SIZE = 660;
 
@@ -554,7 +554,7 @@ describe('HttpStaticRouter', function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
           remotePath: '/',
-          resourcePath: ABS_FIXTURES_DIR,
+          resourcePath: ABS_STATIC_DIR,
         });
         const req = createRequestMock({path: '/rabbit.txt'});
         const promise = S._findFileForRequest(req);
@@ -570,7 +570,7 @@ describe('HttpStaticRouter', function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
           remotePath: '/',
-          resourcePath: ABS_FIXTURES_DIR,
+          resourcePath: ABS_STATIC_DIR,
         });
         const req = createRequestMock({path: '/unknown.txt'});
         const promise = S._findFileForRequest(req);
@@ -583,7 +583,7 @@ describe('HttpStaticRouter', function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
           remotePath: '/',
-          resourcePath: ABS_FIXTURES_DIR,
+          resourcePath: ABS_STATIC_DIR,
         });
         const req = createRequestMock({path: '/nested/heart.txt'});
         const promise = S._findFileForRequest(req);
@@ -599,7 +599,7 @@ describe('HttpStaticRouter', function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
           remotePath: '/',
-          resourcePath: ABS_FIXTURES_DIR,
+          resourcePath: ABS_STATIC_DIR,
         });
         const req = createRequestMock({path: '/rabbit.txt/'});
         const promise = S._findFileForRequest(req);
@@ -612,7 +612,7 @@ describe('HttpStaticRouter', function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
           remotePath: '/',
-          resourcePath: ABS_FIXTURES_DIR,
+          resourcePath: ABS_STATIC_DIR,
         });
         const req = createRequestMock({path: '/nested/heart.txt/'});
         const promise = S._findFileForRequest(req);
@@ -625,7 +625,7 @@ describe('HttpStaticRouter', function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
           remotePath: '/',
-          resourcePath: ABS_FIXTURES_DIR,
+          resourcePath: ABS_STATIC_DIR,
         });
         const req = createRequestMock({path: '/nested'});
         const promise = S._findFileForRequest(req);
@@ -639,7 +639,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({path: '/segment/rabbit.txt'});
           const promise = S._findFileForRequest(req);
@@ -655,7 +655,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({path: '/segment/unknown.txt'});
           const promise = S._findFileForRequest(req);
@@ -668,7 +668,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({path: '/segment/nested/heart.txt'});
           const promise = S._findFileForRequest(req);
@@ -684,7 +684,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({path: '/segment/rabbit.txt/'});
           const promise = S._findFileForRequest(req);
@@ -697,7 +697,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({path: '/segment/nested/heart.txt/'});
           const promise = S._findFileForRequest(req);
@@ -712,7 +712,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({
             path: '/segment1/segment2/rabbit.txt',
@@ -730,7 +730,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({
             path: '/segment1/segment2/unknown.txt',
@@ -745,7 +745,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({
             path: '/segment1/segment2/nested/heart.txt',
@@ -763,7 +763,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({
             path: '/segment1/segment2/rabbit.txt/',
@@ -778,7 +778,7 @@ describe('HttpStaticRouter', function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2',
-            resourcePath: ABS_FIXTURES_DIR,
+            resourcePath: ABS_STATIC_DIR,
           });
           const req = createRequestMock({
             path: '/segment1/segment2/nested/heart.txt/',

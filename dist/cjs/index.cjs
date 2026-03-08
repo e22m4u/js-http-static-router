@@ -388,10 +388,6 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
     debug("Incoming request %s %v.", request.method, request.url);
     debug("File path %v.", fileInfo.path);
     debug("File size %v bytes.", fileInfo.size);
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      debug("Method not allowed.");
-      return;
-    }
     const extname = import_path2.default.extname(fileInfo.path);
     const contentType = import_mime_types.default.contentType(extname) || "application/octet-stream";
     const fileStream = (0, import_fs2.createReadStream)(fileInfo.path);
