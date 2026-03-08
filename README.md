@@ -103,11 +103,6 @@ server.listen(3000, () => {
 
 ```bash
 $ node ./src/server.js
-
-Server is running on http://localhost:3000
-Try to open:
-http://localhost:3000
-http://localhost:3000/rabbit.txt
 ```
 
 ## Тесты
