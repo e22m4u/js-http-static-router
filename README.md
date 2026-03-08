@@ -30,9 +30,23 @@ import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 const {HttpStaticRouter} = require('@e22m4u/js-http-static-router');
 ```
 
-## Использование
+## Базовый пример
+
+Пример предполагает следующую структуру проекта.
+
+```txt
+/static
+  ├── index.html
+  └── /assets
+       └── rabbit.txt
+/src
+  └── server.js
+```
+
+Создание маршрутизатора, определение маршрутов и запуск сервера.
 
 ```js
+// src/server.js
 import path from 'path';
 import http from 'http';
 import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
@@ -49,16 +63,10 @@ const staticRouter = new HttpStaticRouter({
 
 // объявление файла "index.html"
 // в качестве индексной страницы
+// пример: http://localhost:3000
 staticRouter.defineRoute({
   remotePath: '/',
   resourcePath: './index.html',
-});
-
-// объявление файла "page.html"
-// доступным по адресу "/page"
-staticRouter.defineRoute({
-  remotePath: '/page',
-  resourcePath: './page.html',
 });
 
 // экспозиция содержимого директории "assets"
@@ -74,6 +82,8 @@ staticRouter.defineRoute({
 const server = new http.Server();
 server.on('request', async (req, res) => {
   const fileSent = await staticRouter.handleRequest(req, res);
+  // если файл не был отправлен,
+  // то возвращается 404 Not Found
   if (!fileSent) {
     res.writeHead(404, {'Content-Type': 'text/plain'});
     res.write('404 Not Found');
@@ -81,14 +91,24 @@ server.on('request', async (req, res) => {
   }
 });
 
+// запуск сервера
 server.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
   console.log('Try to open:');
   console.log('http://localhost:3000');
-  console.log('http://localhost:3000/page');
   console.log('http://localhost:3000/rabbit.txt');
-  console.log('http://localhost:3000/nested/heart.txt');
 });
+```
+
+Запуск Node.js процесса.
+
+```bash
+$ node ./src/server.js
+
+Server is running on http://localhost:3000
+Try to open:
+http://localhost:3000
+http://localhost:3000/rabbit.txt
 ```
 
 ## Тесты
