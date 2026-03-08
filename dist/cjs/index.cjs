@@ -341,7 +341,6 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
     debug("Walking through %v routes.", this._routes.length);
     for (const route of this._routes) {
       const isMatched = route.regexp.test(requestPath || "/");
-      console.log([route.regexp, requestPath]);
       if (isMatched) {
         debug("Matched route %v.", route.remotePath);
         let targetPath = route.resourcePath;
