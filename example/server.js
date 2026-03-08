@@ -25,14 +25,14 @@ staticRouter.defineRoute({
 });
 
 // экспозиция содержимого директории "static"
-// для доступа по адресу "/assets/{file_name}"
+// для доступа по адресу "/assets/*"
 staticRouter.defineRoute({
   remotePath: '/assets',
   resourcePath: './', // путь указан в "baseDir"
 });
 
 // создание HTTP сервера и определение
-// функции для обработки запросов
+// слушателя для обработки запросов
 const server = new http.Server();
 server.on('request', async (req, res) => {
   const fileSent = await staticRouter.handleRequest(req, res);
