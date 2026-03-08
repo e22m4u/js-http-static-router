@@ -102,7 +102,7 @@ server.listen(3000, () => {
 Запуск Node.js процесса.
 
 ```bash
-$ node ./src/server.js
+node ./src/server.js
 ```
 
 ## Тесты
