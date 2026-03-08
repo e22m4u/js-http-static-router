@@ -63,7 +63,6 @@ const staticRouter = new HttpStaticRouter({
 
 // объявление файла "index.html"
 // в качестве индексной страницы
-// пример: http://localhost:3000
 staticRouter.defineRoute({
   remotePath: '/',
   resourcePath: './index.html',
