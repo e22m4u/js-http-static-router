@@ -33,6 +33,7 @@ const {HttpStaticRouter} = require('@e22m4u/js-http-static-router');
 ## Использование
 
 ```js
+import path from 'path';
 import http from 'http';
 import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 
@@ -41,32 +42,30 @@ const staticRouter = new HttpStaticRouter({
   // при использовании опции "baseDir", относительные пути
   // в регистрируемых маршрутах будут разрешаться относительно
   // указанного адреса файловой системы
-  baseDir: import.meta.dirname,
-  // в данном случае "baseDir" указывает
-  // на путь к директории текущего модуля
+  baseDir: path.join(import.meta.dirname, '../static'),
 });
-// доступ к import.meta.dirname возможен
-// только для ESM начиная с Node.js 20.11.0
+// доступ к import.meta.dirname (директория текущего модуля)
+// возможен только для ESM начиная с Node.js 20.11.0
 
 // объявление файла "index.html"
 // в качестве индексной страницы
 staticRouter.defineRoute({
   remotePath: '/',
-  resourcePath: '../static/index.html',
+  resourcePath: './index.html',
 });
 
 // объявление файла "page.html"
 // доступным по адресу "/page"
 staticRouter.defineRoute({
   remotePath: '/page',
-  resourcePath: '../static/page.html',
+  resourcePath: './page.html',
 });
 
 // экспозиция содержимого директории "static"
 // для доступа по адресу "/assets/{file_name}"
 staticRouter.defineRoute({
   remotePath: '/assets',
-  resourcePath: '../static',
+  resourcePath: './', // путь указан в "baseDir"
 });
 
 // создание HTTP сервера и определение
