@@ -48,21 +48,21 @@ const staticRouter = new HttpStaticRouter({
 // доступ к import.meta.dirname возможен
 // только для ESM начиная с Node.js 20.11.0
 
-// объявление файла "./index.html"
+// объявление файла "index.html"
 // в качестве индексной страницы
 staticRouter.defineRoute({
   remotePath: '/',
   resourcePath: '../static/index.html',
 });
 
-// объявление файла "./page.html"
+// объявление файла "page.html"
 // доступным по адресу "/page"
 staticRouter.defineRoute({
   remotePath: '/page',
   resourcePath: '../static/page.html',
 });
 
-// экспозиция содержимого директории "/static"
+// экспозиция содержимого директории "static"
 // для доступа по адресу "/assets/{file_name}"
 staticRouter.defineRoute({
   remotePath: '/assets',
