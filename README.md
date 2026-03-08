@@ -63,6 +63,7 @@ staticRouter.defineRoute({
 
 // экспозиция содержимого директории "static"
 // для доступа по адресу "/assets/*"
+// пример: http://localhost:3000/assets/rabbit.txt
 staticRouter.defineRoute({
   remotePath: '/assets',
   resourcePath: './', // путь указан в "baseDir"
