@@ -61,12 +61,12 @@ staticRouter.defineRoute({
   resourcePath: './page.html',
 });
 
-// экспозиция содержимого директории "static"
-// для доступа по адресу "/assets/*"
-// пример: http://localhost:3000/assets/rabbit.txt
+// экспозиция содержимого директории "assets"
+// для доступа относительно корня
+// пример: http://localhost:3000/rabbit.txt
 staticRouter.defineRoute({
-  remotePath: '/assets',
-  resourcePath: './', // путь указан в "baseDir"
+  remotePath: '/',
+  resourcePath: './assets',
 });
 
 // создание HTTP сервера и определение
@@ -86,8 +86,8 @@ server.listen(3000, () => {
   console.log('Try to open:');
   console.log('http://localhost:3000');
   console.log('http://localhost:3000/page');
-  console.log('http://localhost:3000/assets/rabbit.txt');
-  console.log('http://localhost:3000/assets/nested/heart.txt');
+  console.log('http://localhost:3000/rabbit.txt');
+  console.log('http://localhost:3000/nested/heart.txt');
 });
 ```
 
