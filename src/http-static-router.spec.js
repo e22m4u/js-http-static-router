@@ -1,21 +1,18 @@
 import path from 'path';
 import {expect} from 'chai';
 import {format} from '@e22m4u/js-format';
+import {createRequestMock} from './utils/index.js';
 import {ServiceContainer} from '@e22m4u/js-service';
 import {HttpStaticRouter} from './http-static-router.js';
 
-/**
- * Relative rabbit file path.
- */
-const REL_RABBIT_FILE_PATH = '../fixtures/rabbit.txt';
-
-/**
- * Absolute rabbit file path.
- */
-const ABS_RABBIT_FILE_PATH = path.join(
-  import.meta.dirname,
-  REL_RABBIT_FILE_PATH,
-);
+const REL_FIXTURES_DIR = '../fixtures';
+const REL_RABBIT_FILE = path.join(REL_FIXTURES_DIR, '/rabbit.txt');
+const REL_HEART_FILE = path.join(REL_FIXTURES_DIR, '/nested/heart.txt');
+const ABS_RABBIT_FILE = path.join(import.meta.dirname, REL_RABBIT_FILE);
+const ABS_HEART_FILE = path.join(import.meta.dirname, REL_HEART_FILE);
+const ABS_FIXTURES_DIR = path.join(import.meta.dirname, REL_FIXTURES_DIR);
+const RABBIT_FILE_SIZE = 824;
+const HEART_FILE_SIZE = 660;
 
 describe('HttpStaticRouter', function () {
   describe('constructor', function () {
@@ -129,7 +126,7 @@ describe('HttpStaticRouter', function () {
       expect(throwable(null)).to.throw(error('null'));
       throwable({
         remotePath: '/path',
-        resourcePath: ABS_RABBIT_FILE_PATH,
+        resourcePath: ABS_RABBIT_FILE,
       })();
     });
 
@@ -138,7 +135,7 @@ describe('HttpStaticRouter', function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
           remotePath: v,
-          resourcePath: ABS_RABBIT_FILE_PATH,
+          resourcePath: ABS_RABBIT_FILE,
         });
       };
       const error = s =>
@@ -159,7 +156,7 @@ describe('HttpStaticRouter', function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
           remotePath: v,
-          resourcePath: ABS_RABBIT_FILE_PATH,
+          resourcePath: ABS_RABBIT_FILE,
         });
       };
       const error = s =>
@@ -188,7 +185,7 @@ describe('HttpStaticRouter', function () {
       expect(throwable({})).to.throw(error('Object'));
       expect(throwable(undefined)).to.throw(error('undefined'));
       expect(throwable(null)).to.throw(error('null'));
-      throwable(ABS_RABBIT_FILE_PATH)();
+      throwable(ABS_RABBIT_FILE)();
     });
 
     it('should require the option "resourcePath" to be an absolute path when the route option "baseDir" is not specified', function () {
@@ -209,20 +206,20 @@ describe('HttpStaticRouter', function () {
       const S = new HttpStaticRouter({baseDir: import.meta.dirname});
       const route = S.defineRoute({
         remotePath: '/path',
-        resourcePath: REL_RABBIT_FILE_PATH,
+        resourcePath: REL_RABBIT_FILE,
       });
-      expect(route.resourcePath).to.be.eq(ABS_RABBIT_FILE_PATH);
+      expect(route.resourcePath).to.be.eq(ABS_RABBIT_FILE);
     });
 
     it('should register a new route with the given route definition', function () {
       const S = new HttpStaticRouter();
       const route1 = S.defineRoute({
         remotePath: '/first',
-        resourcePath: ABS_RABBIT_FILE_PATH,
+        resourcePath: ABS_RABBIT_FILE,
       });
       const route2 = S.defineRoute({
         remotePath: '/second',
-        resourcePath: ABS_RABBIT_FILE_PATH,
+        resourcePath: ABS_RABBIT_FILE,
       });
       expect(S['_routes']).to.include(route1);
       expect(S['_routes']).to.include(route2);
@@ -232,17 +229,464 @@ describe('HttpStaticRouter', function () {
       const S = new HttpStaticRouter();
       const route1 = S.defineRoute({
         remotePath: '/foo',
-        resourcePath: ABS_RABBIT_FILE_PATH,
+        resourcePath: ABS_RABBIT_FILE,
       });
       const route2 = S.defineRoute({
         remotePath: '/fooBarBaz',
-        resourcePath: ABS_RABBIT_FILE_PATH,
+        resourcePath: ABS_RABBIT_FILE,
       });
       const route3 = S.defineRoute({
         remotePath: '/fooBar',
-        resourcePath: ABS_RABBIT_FILE_PATH,
+        resourcePath: ABS_RABBIT_FILE,
       });
       expect(S['_routes']).to.be.eql([route2, route3, route1]);
+    });
+  });
+
+  describe('_findFileForRequest', function () {
+    it('should return undefined if no route matched', async function () {
+      const S = new HttpStaticRouter();
+      const req = createRequestMock();
+      const promise = S._findFileForRequest(req);
+      expect(promise).to.be.instanceOf(Promise);
+      const res = await promise;
+      expect(res).to.be.undefined;
+    });
+
+    describe('for a file route', function () {
+      it('should return a file info even when the request url has an empty string', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({url: ''});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return a file info even when the request url has a protocol and host', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({url: 'http://localhost:3000'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return a file info even when the request url has a protocol and host with a trailing slash', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({url: 'http://localhost:3000/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return undefined when the request url has a host with trailing slash duplicates', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({url: 'http://localhost:3000//'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return a file info for a matched route with the root path', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return a file info for the matched route with a single segment', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/segment'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return a file info for the matched route with multiple segments', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment1/segment2',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/segment1/segment2'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return a file info when a matched route has a single segment with a trailing slash', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/segment/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return a file info when a matched route has multiple segments with a trailing slash', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment1/segment2/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/segment1/segment2/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return undefined when a single segment does not match a trailing slash in the request url', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/segment/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined when multiple segments do not match a trailing slash in the request url', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment1/segment2',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/segment1/segment2/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined when a single segment does not match a trailing slash from the remote path', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/segment'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined when multiple segments do not match a trailing slash from the remote path', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment1/segment2/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/segment1/segment2'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return a file info when a route matches with the GET method', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({method: 'GET'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return a file info when a route matches with the HEAD method', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({method: 'HEAD'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return undefined for the POST method even when the route matches', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({method: 'POST'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined for the PUT method even when the route matches', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({method: 'PUT'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined for the PATCH method even when the route matches', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({method: 'PATCH'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined for the DELETE method even when the route matches', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({method: 'DELETE'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined when a request path has duplicate slashes between its segments', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/some/path',
+          resourcePath: ABS_RABBIT_FILE,
+        });
+        const req = createRequestMock({path: '/some//path'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+    });
+
+    describe('for a directory route', function () {
+      it('should return a file info when an extra path points to an existing file', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/rabbit.txt'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return undefined when an extra path points to a non-existent file', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/unknown.txt'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return a file info when an extra path points to an existing file in a nested directory', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/nested/heart.txt'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_HEART_FILE,
+          size: HEART_FILE_SIZE,
+        });
+      });
+
+      it('should return undefined when an extra path pointing to an existing file has a trailing slash', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/rabbit.txt/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined when an extra path pointing to an existing file in a nested directory has a trailing slash', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/nested/heart.txt/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return a file info for a matched route with a specific remote path and an extra path pointing to an existing file', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/segment/rabbit.txt'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_RABBIT_FILE,
+          size: RABBIT_FILE_SIZE,
+        });
+      });
+
+      it('should return undefined for a matched route with a specific remote path when an extra path points to a non-existent file', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/segment/unknown.txt'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return a file info for a matched route with a specific remote path and an extra path pointing to an existing file in a nested directory', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/segment/nested/heart.txt'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.eql({
+          path: ABS_HEART_FILE,
+          size: HEART_FILE_SIZE,
+        });
+      });
+
+      it('should return undefined for a matched route with a specific remote path when an extra path pointing to an existing file has a trailing slash', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/segment/rabbit.txt/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      it('should return undefined for a matched route with a specific remote path when an extra path pointing to an existing file in a nested directory has a trailing slash', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/segment',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/segment/nested/heart.txt/'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
     });
   });
 });

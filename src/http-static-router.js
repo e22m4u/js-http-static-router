@@ -1,6 +1,5 @@
 import path from 'path';
 import mimeTypes from 'mime-types';
-import {IncomingMessage} from 'http';
 import fs, {createReadStream} from 'fs';
 import {StaticRoute} from './static-route.js';
 import {getPathnameFromUrl} from './utils/index.js';
@@ -138,8 +137,8 @@ export class HttpStaticRouter extends DebuggableService {
     const debug = this.getDebuggerFor(this.defineRoute);
     const route = new StaticRoute(routeDef);
     debug('Adding a new route.');
-    debug('Resource path is %v.', route.resourcePath);
     debug('Remote path is %v.', route.remotePath);
+    debug('Resource path is %v.', route.resourcePath);
     debug('Resource type is %s.', route.isFile ? 'File' : 'Folder');
     this._routes.push(route);
     // самые длинные пути проверяются первыми,
@@ -171,13 +170,6 @@ export class HttpStaticRouter extends DebuggableService {
    * @returns {Promise<FileInfo|undefined>|undefined}
    */
   async _findFileForRequest(request) {
-    if (!(request instanceof IncomingMessage)) {
-      throw new InvalidArgumentError(
-        'Parameter "request" must be an instance of IncomingMessage, ' +
-          'but %v was given.',
-        request,
-      );
-    }
     const debug = this.getDebuggerFor(this._findFileForRequest);
     debug('File finding for an incoming request.');
     debug('Incoming request %s %v.', request.method, request.url);
@@ -202,21 +194,23 @@ export class HttpStaticRouter extends DebuggableService {
     }
     debug('Walking through %v routes.', this._routes.length);
     for (const route of this._routes) {
-      const isMatched = route.regexp.test(requestPath);
+      const isMatched = route.regexp.test(requestPath || '/');
+      console.log([route.regexp, requestPath]);
       if (isMatched) {
         debug('Matched route %v.', route.remotePath);
         // если ресурс ссылается на папку, то из адреса запроса
         // извлекается дополнительная часть (если присутствует),
         // и формируется целевой путь файловой системы
         let targetPath = route.resourcePath;
+        let extraPath = ''; // дополнительная часть адреса
         if (!route.isFile) {
           // извлечение относительного пути в дополнение к адресу
           // ресурса путем удаления из адреса запроса той части,
           // которая была указана при объявлении маршрута
-          const relativePath = requestPath.replace(route.regexp, '');
+          extraPath = requestPath.replace(route.regexp, '');
           // объединение адреса ресурса
           // с дополнительной частью
-          targetPath = path.join(route.resourcePath, relativePath);
+          targetPath = path.join(route.resourcePath, extraPath);
         }
         // если обнаружена попытка выхода за пределы
         // директории маршрута, то возвращается undefined
@@ -244,17 +238,17 @@ export class HttpStaticRouter extends DebuggableService {
         // если размер файла определен, то поиск
         // прерывается и возвращается информация
         if (fileSize !== undefined) {
-          // если файл найден, но запрос заканчивается
-          // на слеш, то файл должен быть проигнорирован
-          if (requestPath.endsWith('/')) {
+          // если файл найден, и дополнительная часть запроса
+          // заканчивается на слеш, то файл игнорируется
+          if (extraPath && extraPath.endsWith('/')) {
             continue;
           }
-          debug('File found %v.', targetPath);
+          debug('Found file %v.', targetPath);
           return {path: targetPath, size: fileSize};
         }
       }
     }
-    debug('File not found.');
+    debug('File was not found.');
   }
 
   /**

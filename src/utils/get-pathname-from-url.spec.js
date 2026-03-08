@@ -3,7 +3,7 @@ import {format} from '@e22m4u/js-format';
 import {getPathnameFromUrl} from './get-pathname-from-url.js';
 
 describe('getPathnameFromUrl', function () {
-  it('should require the parameter "request" to be a String', function () {
+  it('should require the parameter "url" to be a String', function () {
     const throwable = v => () => getPathnameFromUrl(v);
     const error = v =>
       format('Parameter "url" must be a String, but %s was given.', v);

@@ -85,9 +85,14 @@ export class StaticRoute {
     }
     const isFile = stats.isFile();
     const escapedRemotePath = escapeRegexp(routeDef.remotePath);
-    const regexp = isFile
-      ? new RegExp(`^${escapedRemotePath}$`)
-      : new RegExp(`^${escapedRemotePath}(?:$|\\/)`);
+    let regexp;
+    if (isFile) {
+      regexp = new RegExp(`^${escapedRemotePath}$`);
+    } else if (escapedRemotePath === '/') {
+      regexp = new RegExp(`^(?:$|\\/)`);
+    } else {
+      regexp = new RegExp(`^${escapedRemotePath}(?:$|\\/)`);
+    }
     this.remotePath = routeDef.remotePath;
     this.resourcePath = routeDef.resourcePath;
     this.regexp = regexp;

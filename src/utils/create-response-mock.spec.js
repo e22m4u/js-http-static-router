@@ -140,7 +140,7 @@ describe('createResponseMock', function () {
   });
 
   describe('Stream', function () {
-    it('should set the property "headerSent" to true when the stream ends', function () {
+    it('should set the property "headersSent" to true when the stream ends', function () {
       const res = createResponseMock();
       expect(res.headersSent).to.be.false;
       res.end('test');
