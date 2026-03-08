@@ -253,7 +253,7 @@ describe('HttpStaticRouter', function () {
       expect(res).to.be.undefined;
     });
 
-    describe('for a file route', function () {
+    describe('when a route points to a file', function () {
       it('should return a file info even when the request url has an empty string', async function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
@@ -415,8 +415,8 @@ describe('HttpStaticRouter', function () {
         expect(res).to.be.undefined;
       });
 
-      describe('for a non-root remote path', function () {
-        it('should return a file info for the matched route with a single segment', async function () {
+      describe('when a remote path has a single segment', function () {
+        it('should return a file info for a matched route pointing to an existing file', async function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment',
@@ -432,7 +432,51 @@ describe('HttpStaticRouter', function () {
           });
         });
 
-        it('should return a file info for the matched route with multiple segments', async function () {
+        it('should return a file info when a matched route has a trailing slash', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment/',
+            resourcePath: ABS_RABBIT_FILE,
+          });
+          const req = createRequestMock({path: '/segment/'});
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.eql({
+            path: ABS_RABBIT_FILE,
+            size: RABBIT_FILE_SIZE,
+          });
+        });
+
+        it('should return undefined when the remote path does not match a trailing slash in the request url', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment',
+            resourcePath: ABS_RABBIT_FILE,
+          });
+          const req = createRequestMock({path: '/segment/'});
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.undefined;
+        });
+
+        it('should return undefined when the request url does not match a trailing slash in the remote path', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment/',
+            resourcePath: ABS_RABBIT_FILE,
+          });
+          const req = createRequestMock({path: '/segment'});
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.undefined;
+        });
+      });
+
+      describe('when a remote path has two segments', function () {
+        it('should return a file info for the matched route pointing to an existing file', async function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2',
@@ -448,23 +492,7 @@ describe('HttpStaticRouter', function () {
           });
         });
 
-        it('should return a file info when a matched route has a single segment with a trailing slash', async function () {
-          const S = new HttpStaticRouter();
-          S.defineRoute({
-            remotePath: '/segment/',
-            resourcePath: ABS_RABBIT_FILE,
-          });
-          const req = createRequestMock({path: '/segment/'});
-          const promise = S._findFileForRequest(req);
-          expect(promise).to.be.instanceOf(Promise);
-          const res = await promise;
-          expect(res).to.be.eql({
-            path: ABS_RABBIT_FILE,
-            size: RABBIT_FILE_SIZE,
-          });
-        });
-
-        it('should return a file info when a matched route has multiple segments with a trailing slash', async function () {
+        it('should return a file info when a matched route has a trailing slash', async function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2/',
@@ -480,20 +508,7 @@ describe('HttpStaticRouter', function () {
           });
         });
 
-        it('should return undefined when a single segment does not match a trailing slash in the request url', async function () {
-          const S = new HttpStaticRouter();
-          S.defineRoute({
-            remotePath: '/segment',
-            resourcePath: ABS_RABBIT_FILE,
-          });
-          const req = createRequestMock({path: '/segment/'});
-          const promise = S._findFileForRequest(req);
-          expect(promise).to.be.instanceOf(Promise);
-          const res = await promise;
-          expect(res).to.be.undefined;
-        });
-
-        it('should return undefined when multiple segments do not match a trailing slash in the request url', async function () {
+        it('should return undefined when the remote path does not match a trailing slash in the request url', async function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2',
@@ -506,20 +521,7 @@ describe('HttpStaticRouter', function () {
           expect(res).to.be.undefined;
         });
 
-        it('should return undefined when a single segment does not match a trailing slash from the remote path', async function () {
-          const S = new HttpStaticRouter();
-          S.defineRoute({
-            remotePath: '/segment/',
-            resourcePath: ABS_RABBIT_FILE,
-          });
-          const req = createRequestMock({path: '/segment'});
-          const promise = S._findFileForRequest(req);
-          expect(promise).to.be.instanceOf(Promise);
-          const res = await promise;
-          expect(res).to.be.undefined;
-        });
-
-        it('should return undefined when multiple segments do not match a trailing slash from the remote path', async function () {
+        it('should return undefined when the request url does not match a trailing slash in the remote path', async function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment1/segment2/',
@@ -547,7 +549,7 @@ describe('HttpStaticRouter', function () {
       });
     });
 
-    describe('for a directory route', function () {
+    describe('when a route points to a directory', function () {
       it('should return a file info when an extra path points to an existing file', async function () {
         const S = new HttpStaticRouter();
         S.defineRoute({
@@ -619,7 +621,20 @@ describe('HttpStaticRouter', function () {
         expect(res).to.be.undefined;
       });
 
-      describe('for a non-root remote path', function () {
+      it('should return undefined when an extra path pointing to an existing directory but without a specified file name', async function () {
+        const S = new HttpStaticRouter();
+        S.defineRoute({
+          remotePath: '/',
+          resourcePath: ABS_FIXTURES_DIR,
+        });
+        const req = createRequestMock({path: '/nested'});
+        const promise = S._findFileForRequest(req);
+        expect(promise).to.be.instanceOf(Promise);
+        const res = await promise;
+        expect(res).to.be.undefined;
+      });
+
+      describe('when a remote path has a single segment', function () {
         it('should return a file info for an extra path pointing to an existing file', async function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
@@ -636,7 +651,7 @@ describe('HttpStaticRouter', function () {
           });
         });
 
-        it('should return undefined for an extra path points to a non-existent file', async function () {
+        it('should return undefined for an extra path pointing to a non-existent file', async function () {
           const S = new HttpStaticRouter();
           S.defineRoute({
             remotePath: '/segment',
@@ -685,6 +700,89 @@ describe('HttpStaticRouter', function () {
             resourcePath: ABS_FIXTURES_DIR,
           });
           const req = createRequestMock({path: '/segment/nested/heart.txt/'});
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.undefined;
+        });
+      });
+
+      describe('when a remote path has two segments', function () {
+        it('should return a file info for an extra path pointing to an existing file', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment1/segment2',
+            resourcePath: ABS_FIXTURES_DIR,
+          });
+          const req = createRequestMock({
+            path: '/segment1/segment2/rabbit.txt',
+          });
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.eql({
+            path: ABS_RABBIT_FILE,
+            size: RABBIT_FILE_SIZE,
+          });
+        });
+
+        it('should return undefined for an extra path pointing to a non-existent file', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment1/segment2',
+            resourcePath: ABS_FIXTURES_DIR,
+          });
+          const req = createRequestMock({
+            path: '/segment1/segment2/unknown.txt',
+          });
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.undefined;
+        });
+
+        it('should return a file info for an extra path pointing to an existing file in a nested directory', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment1/segment2',
+            resourcePath: ABS_FIXTURES_DIR,
+          });
+          const req = createRequestMock({
+            path: '/segment1/segment2/nested/heart.txt',
+          });
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.eql({
+            path: ABS_HEART_FILE,
+            size: HEART_FILE_SIZE,
+          });
+        });
+
+        it('should return undefined when an extra path pointing to an existing file has a trailing slash', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment1/segment2',
+            resourcePath: ABS_FIXTURES_DIR,
+          });
+          const req = createRequestMock({
+            path: '/segment1/segment2/rabbit.txt/',
+          });
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.undefined;
+        });
+
+        it('should return undefined when an extra path pointing to an existing file in a nested directory has a trailing slash', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment1/segment2',
+            resourcePath: ABS_FIXTURES_DIR,
+          });
+          const req = createRequestMock({
+            path: '/segment1/segment2/nested/heart.txt/',
+          });
           const promise = S._findFileForRequest(req);
           expect(promise).to.be.instanceOf(Promise);
           const res = await promise;
