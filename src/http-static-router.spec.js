@@ -843,4 +843,57 @@ describe('HttpStaticRouter', function () {
       expect(res.headersSent).to.be.false;
     });
   });
+
+  describe('handleRequest', function () {
+    it('should return true and send file when route matches', async function () {
+      const S = new HttpStaticRouter();
+      S.defineRoute({remotePath: '/test', resourcePath: ABS_RABBIT_FILE});
+      const req = createRequestMock({path: '/test'});
+      const res = createResponseMock();
+      const result = await S.handleRequest(req, res);
+      expect(result).to.be.true;
+      expect(res.statusCode).to.be.eq(200);
+      expect(res.headersSent).to.be.true;
+      const body = await res.getBody();
+      expect(Buffer.from(body).byteLength).to.be.eq(RABBIT_FILE_SIZE);
+    });
+
+    it('should return false when no route matches', async function () {
+      const S = new HttpStaticRouter();
+      const req = createRequestMock({path: '/unknown'});
+      const res = createResponseMock();
+      const result = await S.handleRequest(req, res);
+      expect(result).to.be.false;
+      expect(res.headersSent).to.be.false;
+    });
+
+    it('should return false when file does not exist', async function () {
+      const S = new HttpStaticRouter({baseDir: ABS_ASSETS_DIR});
+      S.defineRoute({remotePath: '/', resourcePath: './'});
+      const req = createRequestMock({path: '/missing'});
+      const res = createResponseMock();
+      const result = await S.handleRequest(req, res);
+      expect(result).to.be.false;
+      expect(res.headersSent).to.be.false;
+    });
+
+    it('should handle request for directory correctly', async function () {
+      const S = new HttpStaticRouter({baseDir: ABS_ASSETS_DIR});
+      S.defineRoute({remotePath: '/', resourcePath: './'});
+      const req = createRequestMock({path: '/rabbit.txt'});
+      const res = createResponseMock();
+      const result = await S.handleRequest(req, res);
+      expect(result).to.be.true;
+      expect(res.statusCode).to.be.eq(200);
+    });
+
+    it('should return false for unsupported HTTP method', async function () {
+      const S = new HttpStaticRouter();
+      S.defineRoute({remotePath: '/', resourcePath: ABS_RABBIT_FILE});
+      const req = createRequestMock({path: '/', method: 'POST'});
+      const res = createResponseMock();
+      const result = await S.handleRequest(req, res);
+      expect(result).to.be.false;
+    });
+  });
 });
