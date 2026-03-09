@@ -2,6 +2,6 @@
 /**
  * Get pathname from url.
  *
- * @param request
+ * @param url
  */
 export declare function getPathnameFromUrl(url: string): string;

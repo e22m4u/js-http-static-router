@@ -1,9 +1,9 @@
 import path from 'path';
 import {expect} from 'chai';
 import {format} from '@e22m4u/js-format';
-import {createRequestMock} from './utils/index.js';
 import {ServiceContainer} from '@e22m4u/js-service';
 import {HttpStaticRouter} from './http-static-router.js';
+import {createRequestMock, createResponseMock} from './utils/index.js';
 
 const REL_ASSETS_DIR = '../static/assets';
 const REL_RABBIT_FILE = path.join(REL_ASSETS_DIR, '/rabbit.txt');
@@ -789,6 +789,58 @@ describe('HttpStaticRouter', function () {
           expect(res).to.be.undefined;
         });
       });
+    });
+  });
+
+  describe('_sendFile', function () {
+    it('should set correct headers and the status code for a sending file', async function () {
+      const fileInfo = {path: ABS_HEART_FILE, size: HEART_FILE_SIZE};
+      const expectedContentType = 'text/plain; charset=utf-8';
+      const S = new HttpStaticRouter();
+      const req = createRequestMock();
+      const res = createResponseMock();
+      await S._sendFile(req, res, fileInfo);
+      expect(res.statusCode).to.be.eq(200);
+      expect(res.getHeader('Content-Type')).to.be.eq(expectedContentType);
+      expect(res.getHeader('Content-Length')).to.be.eq(String(fileInfo.size));
+    });
+
+    it('should send correct headers and the status code for a non-existing file', async function () {
+      const fileInfo = {path: path.join(ABS_ASSETS_DIR, 'unknown'), size: 0};
+      const expectedContentType = 'text/plain; charset=utf-8';
+      const S = new HttpStaticRouter();
+      const req = createRequestMock();
+      const res = createResponseMock();
+      await S._sendFile(req, res, fileInfo);
+      const body = await res.getBody();
+      expect(res.statusCode).to.be.eq(404);
+      expect(res.getHeader('Content-Type')).to.be.eq(expectedContentType);
+      expect(body).to.be.eq('404 Not Found');
+    });
+
+    it('should send 500 Internal Server Error for non-ENOENT filesystem errors', async function () {
+      const fileInfo = {path: import.meta.dirname, size: 1024};
+      const expectedContentType = 'text/plain; charset=utf-8';
+      const S = new HttpStaticRouter();
+      const req = createRequestMock();
+      const res = createResponseMock();
+      await S._sendFile(req, res, fileInfo);
+      const body = await res.getBody();
+      expect(res.statusCode).to.be.eq(500);
+      expect(res.getHeader('Content-Type')).to.be.eq(expectedContentType);
+      expect(body).to.be.eq('500 Internal Server Error');
+    });
+
+    it('should resolve the promise when the client closes the request prematurely', async function () {
+      const fileInfo = {path: ABS_RABBIT_FILE, size: RABBIT_FILE_SIZE};
+      const S = new HttpStaticRouter();
+      const req = createRequestMock();
+      const res = createResponseMock();
+      const promise = S._sendFile(req, res, fileInfo);
+      req.emit('close');
+      await promise;
+      expect(res.writableFinished).to.be.false;
+      expect(res.headersSent).to.be.false;
     });
   });
 });

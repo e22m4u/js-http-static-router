@@ -23,4 +23,4 @@ export const CHARACTER_ENCODING_LIST: (
 export declare function fetchRequestBody(
   request: IncomingMessage,
   bodyBytesLimit?: number,
-): Promise<string>;
+): Promise<string | undefined>;

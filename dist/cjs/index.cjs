@@ -304,7 +304,7 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
   async handleRequest(request, response) {
     const fileInfo = await this._findFileForRequest(request);
     if (fileInfo !== void 0) {
-      this._sendFile(request, response, fileInfo);
+      await this._sendFile(request, response, fileInfo);
       return true;
     }
     return false;
@@ -381,8 +381,11 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
    * @param {import('http').IncomingMessage} request
    * @param {import('http').ServerResponse} response
    * @param {FileInfo} fileInfo
+   * @returns {Promise<void>}
    */
-  _sendFile(request, response, fileInfo) {
+  async _sendFile(request, response, fileInfo) {
+    let resolve;
+    const promise = new Promise((res) => resolve = res);
     const debug = this.getDebuggerFor(this._sendFile);
     debug("File sending for an incoming request.");
     debug("Incoming request %s %v.", request.method, request.url);
@@ -394,12 +397,12 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
     fileStream.on("error", (error) => {
       debug("Unable to open a file stream.");
       this._handleFsError(error, response);
+      resolve();
     });
     fileStream.on("open", () => {
-      response.writeHead(200, {
-        "Content-Type": contentType,
-        "Content-Length": fileInfo.size
-      });
+      response.statusCode = 200;
+      response.setHeader("Content-Type", contentType);
+      response.setHeader("Content-Length", fileInfo.size);
       if (request.method === "HEAD") {
         response.end();
         debug("Response has been sent without a body for the HEAD request.");
@@ -409,9 +412,17 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
       fileStream.pipe(response);
     });
     request.on("close", () => {
-      debug("File has been sent.");
-      fileStream.destroy();
+      if (!response.writableFinished) {
+        debug("Request closed prematurely by the client.");
+        fileStream.destroy();
+        resolve();
+      }
     });
+    response.on("finish", () => {
+      debug("File has been sent successfully.");
+      resolve();
+    });
+    return promise;
   }
   /**
    * Handle filesystem error.
@@ -426,11 +437,13 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
       return;
     }
     if ("code" in error && error.code === "ENOENT") {
-      response.writeHead(404, { "Content-Type": "text/plain" });
+      response.statusCode = 404;
+      response.setHeader("Content-Type", "text/plain; charset=utf-8");
       response.write("404 Not Found");
       response.end();
     } else {
-      response.writeHead(500, { "Content-Type": "text/plain" });
+      response.statusCode = 500;
+      response.setHeader("Content-Type", "text/plain; charset=utf-8");
       response.write("500 Internal Server Error");
       response.end();
     }

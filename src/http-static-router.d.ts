@@ -16,6 +16,11 @@ export type HttpStaticRouterOptions = {
 export declare class HttpStaticRouter extends DebuggableService {
   /**
    * Constructor.
+   */
+  constructor();
+  
+  /**
+   * Constructor.
    *
    * @param container
    */
