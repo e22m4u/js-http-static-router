@@ -1,6 +1,6 @@
 {
   "name": "@e22m4u/js-http-static-router",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "HTTP-маршрутизатор статичных ресурсов для Node.js",
   "author": "Mikhail Evstropov <e22m4u@yandex.ru>",
   "license": "MIT",
