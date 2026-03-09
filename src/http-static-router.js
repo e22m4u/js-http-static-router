@@ -150,6 +150,11 @@ export class HttpStaticRouter extends DebuggableService {
   /**
    * Handle request.
    *
+   * Метод возвращает Promise, который разрешается как:
+   *   - false, если маршрут не совпал, файл не найден
+   *     или метод запроса не поддерживается;
+   *   - true, во всех остальных случаях;
+   *
    * @param {import('http').IncomingMessage} request
    * @param {import('http').ServerResponse} response
    * @returns {Promise<boolean>}
@@ -157,8 +162,7 @@ export class HttpStaticRouter extends DebuggableService {
   async handleRequest(request, response) {
     const fileInfo = await this._findFileForRequest(request);
     if (fileInfo !== undefined) {
-      await this._sendFile(request, response, fileInfo);
-      return true;
+      return this._sendFile(request, response, fileInfo);
     }
     return false;
   }
@@ -253,10 +257,14 @@ export class HttpStaticRouter extends DebuggableService {
   /**
    * Send file.
    *
+   * Метод возвращает Promise, который разрешается как:
+   *   - false, если файл не найден;
+   *   - true, во всех остальных случаях;
+   *
    * @param {import('http').IncomingMessage} request
    * @param {import('http').ServerResponse} response
    * @param {FileInfo} fileInfo
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>}
    */
   async _sendFile(request, response, fileInfo) {
     let resolve;
@@ -276,8 +284,20 @@ export class HttpStaticRouter extends DebuggableService {
     const fileStream = createReadStream(fileInfo.path);
     fileStream.on('error', error => {
       debug('Unable to open a file stream.');
-      this._handleFsError(error, response);
-      resolve();
+      if ('code' in error && error.code === 'ENOENT') {
+        resolve(false);
+        return;
+      }
+      if (response.headersSent) {
+        response.destroy();
+        resolve(true);
+        return;
+      }
+      response.statusCode = 500;
+      response.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      response.write('500 Internal Server Error');
+      response.end();
+      resolve(true);
     });
     // отправка заголовка 200, только после
     // этого начинается отдача файла
@@ -303,39 +323,14 @@ export class HttpStaticRouter extends DebuggableService {
       if (!response.writableFinished) {
         debug('Request closed prematurely by the client.');
         fileStream.destroy();
-        resolve();
+        resolve(true);
       }
     });
     // успешное завершение отправки ответа
     response.on('finish', () => {
       debug('File has been sent successfully.');
-      resolve();
+      resolve(true);
     });
     return promise;
-  }
-
-  /**
-   * Handle filesystem error.
-   *
-   * @param {object} error
-   * @param {object} response
-   * @returns {undefined}
-   */
-  _handleFsError(error, response) {
-    if (response.headersSent) {
-      response.destroy();
-      return;
-    }
-    if ('code' in error && error.code === 'ENOENT') {
-      response.statusCode = 404;
-      response.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      response.write('404 Not Found');
-      response.end();
-    } else {
-      response.statusCode = 500;
-      response.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      response.write('500 Internal Server Error');
-      response.end();
-    }
   }
 }

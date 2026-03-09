@@ -793,59 +793,59 @@ describe('HttpStaticRouter', function () {
   });
 
   describe('_sendFile', function () {
-    it('should set correct headers and the status code for a sending file', async function () {
+    it('should resolve true and send response correctly for an existing file', async function () {
       const fileInfo = {path: ABS_HEART_FILE, size: HEART_FILE_SIZE};
       const expectedContentType = 'text/plain; charset=utf-8';
       const S = new HttpStaticRouter();
       const req = createRequestMock();
       const res = createResponseMock();
-      await S._sendFile(req, res, fileInfo);
+      const result = await S._sendFile(req, res, fileInfo);
+      expect(result).to.be.true;
       expect(res.statusCode).to.be.eq(200);
       expect(res.getHeader('Content-Type')).to.be.eq(expectedContentType);
       expect(res.getHeader('Content-Length')).to.be.eq(String(fileInfo.size));
     });
 
-    it('should send correct headers and the status code for a non-existing file', async function () {
+    it('should resolve false and skip response sending for a non-existing file', async function () {
       const fileInfo = {path: path.join(ABS_ASSETS_DIR, 'unknown'), size: 0};
-      const expectedContentType = 'text/plain; charset=utf-8';
       const S = new HttpStaticRouter();
       const req = createRequestMock();
       const res = createResponseMock();
-      await S._sendFile(req, res, fileInfo);
-      const body = await res.getBody();
-      expect(res.statusCode).to.be.eq(404);
-      expect(res.getHeader('Content-Type')).to.be.eq(expectedContentType);
-      expect(body).to.be.eq('404 Not Found');
+      const result = await S._sendFile(req, res, fileInfo);
+      expect(result).to.be.false;
+      expect(res.headersSent).to.be.false;
     });
 
-    it('should send 500 Internal Server Error for non-ENOENT filesystem errors', async function () {
+    it('should resolve true and send 500 Internal Server Error for non-ENOENT filesystem errors', async function () {
       const fileInfo = {path: import.meta.dirname, size: 1024};
       const expectedContentType = 'text/plain; charset=utf-8';
       const S = new HttpStaticRouter();
       const req = createRequestMock();
       const res = createResponseMock();
-      await S._sendFile(req, res, fileInfo);
+      const result = await S._sendFile(req, res, fileInfo);
+      expect(result).to.be.true;
       const body = await res.getBody();
       expect(res.statusCode).to.be.eq(500);
       expect(res.getHeader('Content-Type')).to.be.eq(expectedContentType);
       expect(body).to.be.eq('500 Internal Server Error');
     });
 
-    it('should resolve the promise when the client closes the request prematurely', async function () {
+    it('should resolve true when the client closes the request prematurely', async function () {
       const fileInfo = {path: ABS_RABBIT_FILE, size: RABBIT_FILE_SIZE};
       const S = new HttpStaticRouter();
       const req = createRequestMock();
       const res = createResponseMock();
       const promise = S._sendFile(req, res, fileInfo);
       req.emit('close');
-      await promise;
+      const result = await promise;
+      expect(result).to.be.true;
       expect(res.writableFinished).to.be.false;
       expect(res.headersSent).to.be.false;
     });
   });
 
   describe('handleRequest', function () {
-    it('should return true and send file when route matches', async function () {
+    it('should resolve true and send file when route matches', async function () {
       const S = new HttpStaticRouter();
       S.defineRoute({remotePath: '/test', resourcePath: ABS_RABBIT_FILE});
       const req = createRequestMock({path: '/test'});
@@ -858,7 +858,7 @@ describe('HttpStaticRouter', function () {
       expect(Buffer.from(body).byteLength).to.be.eq(RABBIT_FILE_SIZE);
     });
 
-    it('should return false when no route matches', async function () {
+    it('should resolve false when no route matches', async function () {
       const S = new HttpStaticRouter();
       const req = createRequestMock({path: '/unknown'});
       const res = createResponseMock();
@@ -867,7 +867,7 @@ describe('HttpStaticRouter', function () {
       expect(res.headersSent).to.be.false;
     });
 
-    it('should return false when file does not exist', async function () {
+    it('should resolve false when file does not exist', async function () {
       const S = new HttpStaticRouter({baseDir: ABS_ASSETS_DIR});
       S.defineRoute({remotePath: '/', resourcePath: './'});
       const req = createRequestMock({path: '/missing'});
@@ -877,7 +877,16 @@ describe('HttpStaticRouter', function () {
       expect(res.headersSent).to.be.false;
     });
 
-    it('should handle request for directory correctly', async function () {
+    it('should resolve false for unsupported HTTP method', async function () {
+      const S = new HttpStaticRouter();
+      S.defineRoute({remotePath: '/', resourcePath: ABS_RABBIT_FILE});
+      const req = createRequestMock({path: '/', method: 'POST'});
+      const res = createResponseMock();
+      const result = await S.handleRequest(req, res);
+      expect(result).to.be.false;
+    });
+
+    it('should resolve true and handle request for directory correctly', async function () {
       const S = new HttpStaticRouter({baseDir: ABS_ASSETS_DIR});
       S.defineRoute({remotePath: '/', resourcePath: './'});
       const req = createRequestMock({path: '/rabbit.txt'});
@@ -885,15 +894,6 @@ describe('HttpStaticRouter', function () {
       const result = await S.handleRequest(req, res);
       expect(result).to.be.true;
       expect(res.statusCode).to.be.eq(200);
-    });
-
-    it('should return false for unsupported HTTP method', async function () {
-      const S = new HttpStaticRouter();
-      S.defineRoute({remotePath: '/', resourcePath: ABS_RABBIT_FILE});
-      const req = createRequestMock({path: '/', method: 'POST'});
-      const res = createResponseMock();
-      const result = await S.handleRequest(req, res);
-      expect(result).to.be.false;
     });
   });
 });
