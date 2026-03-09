@@ -162,7 +162,8 @@ export class HttpStaticRouter extends DebuggableService {
   async handleRequest(request, response) {
     const fileInfo = await this._findFileForRequest(request);
     if (fileInfo !== undefined) {
-      return this._sendFile(request, response, fileInfo);
+      await this._sendFile(request, response, fileInfo);
+      return true;
     }
     return false;
   }
@@ -257,14 +258,10 @@ export class HttpStaticRouter extends DebuggableService {
   /**
    * Send file.
    *
-   * Метод возвращает Promise, который разрешается как:
-   *   - false, если файл не найден;
-   *   - true, во всех остальных случаях;
-   *
    * @param {import('http').IncomingMessage} request
    * @param {import('http').ServerResponse} response
    * @param {FileInfo} fileInfo
-   * @returns {Promise<boolean>}
+   * @returns {Promise<void>}
    */
   async _sendFile(request, response, fileInfo) {
     let resolve;
@@ -284,20 +281,17 @@ export class HttpStaticRouter extends DebuggableService {
     const fileStream = createReadStream(fileInfo.path);
     fileStream.on('error', error => {
       debug('Unable to open a file stream.');
-      if ('code' in error && error.code === 'ENOENT') {
-        resolve(false);
-        return;
-      }
+      console.error(error);
       if (response.headersSent) {
         response.destroy();
-        resolve(true);
+        resolve();
         return;
       }
       response.statusCode = 500;
       response.setHeader('Content-Type', 'text/plain; charset=utf-8');
       response.write('500 Internal Server Error');
       response.end();
-      resolve(true);
+      resolve();
     });
     // отправка заголовка 200, только после
     // этого начинается отдача файла
@@ -323,13 +317,13 @@ export class HttpStaticRouter extends DebuggableService {
       if (!response.writableFinished) {
         debug('Request closed prematurely by the client.');
         fileStream.destroy();
-        resolve(true);
+        resolve();
       }
     });
     // успешное завершение отправки ответа
     response.on('finish', () => {
       debug('File has been sent successfully.');
-      resolve(true);
+      resolve();
     });
     return promise;
   }
