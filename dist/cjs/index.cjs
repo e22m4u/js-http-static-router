@@ -207,7 +207,7 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
    */
   constructor(containerOrOptions, options) {
     const debugOptions = {
-      noEnvironmentNamespace: true,
+      noGlobalNamespace: true,
       namespace: "jsHttpStaticRouter"
     };
     if ((0, import_js_service.isServiceContainer)(containerOrOptions)) {
@@ -219,13 +219,13 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
           containerOrOptions
         );
       }
-      super(void 0, debugOptions);
+      super(debugOptions);
       if (options === void 0) {
         options = containerOrOptions;
         containerOrOptions = void 0;
       }
     } else {
-      super(void 0, debugOptions);
+      super(debugOptions);
     }
     if (options !== void 0) {
       if (!options || typeof options !== "object" || Array.isArray(options)) {

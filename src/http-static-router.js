@@ -40,7 +40,7 @@ export class HttpStaticRouter extends DebuggableService {
    */
   constructor(containerOrOptions, options) {
     const debugOptions = {
-      noEnvironmentNamespace: true,
+      noGlobalNamespace: true,
       namespace: 'jsHttpStaticRouter',
     };
     if (isServiceContainer(containerOrOptions)) {
@@ -57,13 +57,13 @@ export class HttpStaticRouter extends DebuggableService {
           containerOrOptions,
         );
       }
-      super(undefined, debugOptions);
+      super(debugOptions);
       if (options === undefined) {
         options = containerOrOptions;
         containerOrOptions = undefined;
       }
     } else {
-      super(undefined, debugOptions);
+      super(debugOptions);
     }
     // options
     if (options !== undefined) {
