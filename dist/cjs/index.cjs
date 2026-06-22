@@ -222,7 +222,6 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
       super(debugOptions);
       if (options === void 0) {
         options = containerOrOptions;
-        containerOrOptions = void 0;
       }
     } else {
       super(debugOptions);

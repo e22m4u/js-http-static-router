@@ -60,7 +60,6 @@ export class HttpStaticRouter extends DebuggableService {
       super(debugOptions);
       if (options === undefined) {
         options = containerOrOptions;
-        containerOrOptions = undefined;
       }
     } else {
       super(debugOptions);
