@@ -1,5 +1,8 @@
 ## @e22m4u/js-http-static-router
 
+![npm version](https://badge.fury.io/js/@e22m4u%2Fjs-http-static-router.svg)
+![license](https://img.shields.io/badge/license-mit-blue.svg)
+
 HTTP-маршрутизатор статичных ресурсов для Node.js.
 
 Модуль удобен для встраивания документации или административных панелей
