@@ -24,9 +24,9 @@ staticRouter.defineRoute({
   resourcePath: './page.html',
 });
 
-// экспозиция содержимого директории "assets"
+// публикация содержимого директории "assets"
 // для доступа относительно корня
-// пример: http://localhost:3000/assets/rabbit.txt
+// пример: http://localhost:3000/rabbit.txt
 staticRouter.defineRoute({
   remotePath: '/',
   resourcePath: './assets',
