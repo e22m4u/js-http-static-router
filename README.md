@@ -5,7 +5,7 @@
 
 English | [Русский](./README.ru.md)
 
-HTTP static resource router for Node.js.
+HTTP static file router for Node.js.
 
 The module is useful for embedding documentation or administrative panels
 directly into a server application, avoiding the deployment of additional
@@ -261,7 +261,7 @@ registered routes and sends the found file to the client. When reading a file,
 the router uses streams, allowing safe delivery of large files without
 overloading the server's RAM.
 
-The router automatically determines the resource *MIME-type* based on its
+The router automatically determines the file *MIME-type* based on its
 extension, sets the necessary headers, and correctly handles connection drops
 from the client side, closing the file stream in a timely manner to prevent
 memory leaks.

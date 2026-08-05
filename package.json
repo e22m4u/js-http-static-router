@@ -1,7 +1,7 @@
 {
   "name": "@e22m4u/js-http-static-router",
   "version": "0.2.4",
-  "description": "HTTP static resource router for Node.js",
+  "description": "HTTP static file router for Node.js",
   "author": "Mikhail Evstropov <e22m4u@yandex.ru>",
   "license": "MIT",
   "keywords": [
