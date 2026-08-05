@@ -3,34 +3,36 @@
 ![npm version](https://badge.fury.io/js/@e22m4u%2Fjs-http-static-router.svg)
 ![license](https://img.shields.io/badge/license-mit-blue.svg)
 
-HTTP-маршрутизатор статичных ресурсов для Node.js.
+English | [Русский](./README.ru.md)
 
-Модуль удобен для встраивания документации или административных панелей
-непосредственно в серверное приложение, позволяя избежать развертывания
-дополнительной инфраструктуры.
+HTTP static resource router for Node.js.
 
-- Интеграция в существующий *http*-сервер.
-- Управление доступом к файловой системе через маршруты.
-- Использование потоков для экономии оперативной памяти.
+The module is useful for embedding documentation or administrative panels
+directly into a server application, avoiding the deployment of additional
+infrastructure.
 
-## Содержание
+- Integration into an existing *http* server.
+- Managing file system access via routes.
+- Using streams to save RAM.
 
-- [Установка](#установка)
-- [Базовый пример](#базовый-пример)
-- [Маршрутизатор](#маршрутизатор)
-  - [Создание экземпляра](#создание-экземпляра)
-  - [Регистрация маршрута](#регистрация-маршрута)
-  - [Обработка запросов](#обработка-запросов)
-- [Тесты](#тесты)
-- [Лицензия](#лицензия)
+## Table of Contents
 
-## Установка
+- [Installation](#installation)
+- [Basic example](#basic-example)
+- [Router](#router)
+  - [Instantiation](#instantiation)
+  - [Route registration](#route-registration)
+  - [Request handling](#request-handling)
+- [Tests](#tests)
+- [License](#license)
+
+## Installation
 
 ```bash
 npm install @e22m4u/js-http-static-router
 ```
 
-Модуль поддерживает ESM и CommonJS стандарты.
+The module supports ESM and CommonJS standards.
 
 *ESM*
 
@@ -44,9 +46,9 @@ import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 const {HttpStaticRouter} = require('@e22m4u/js-http-static-router');
 ```
 
-## Базовый пример
+## Basic example
 
-Пример предполагает следующую структуру проекта.
+The example assumes the following project structure.
 
 ```txt
 /static
@@ -57,7 +59,7 @@ const {HttpStaticRouter} = require('@e22m4u/js-http-static-router');
   └── server.js
 ```
 
-Создание маршрутизатора, определение маршрутов и запуск сервера.
+Router instantiation, route definition, and server startup.
 
 ```js
 // src/server.js
@@ -65,38 +67,38 @@ import path from 'path';
 import http from 'http';
 import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 
-// создание экземпляра маршрутизатора
+// instantiating the router
 const staticRouter = new HttpStaticRouter({
-  // при использовании опции "baseDir", относительные пути
-  // в регистрируемых маршрутах будут разрешаться относительно
-  // указанного адреса файловой системы
+  // when using the "baseDir" option, relative paths
+  // in registered routes will be resolved relative to
+  // the specified file system path
   baseDir: path.join(import.meta.dirname, '../static'),
 });
-// доступ к import.meta.dirname (директория текущего модуля)
-// возможен только для ESM начиная с Node.js 20.11.0
+// access to import.meta.dirname (current module directory)
+// is available only for ESM starting from Node.js 20.11.0
 
-// объявление файла "index.html"
-// в качестве индексной страницы
+// declaration of the "index.html" file
+// as an index page
 staticRouter.defineRoute({
   remotePath: '/',
   resourcePath: './index.html',
 });
 
-// публикация содержимого директории "assets"
-// для доступа относительно корня
-// пример: http://localhost:3000/rabbit.txt
+// publishing the "assets" directory content
+// for access relative to the root
+// example: http://localhost:3000/rabbit.txt
 staticRouter.defineRoute({
   remotePath: '/',
   resourcePath: './assets',
 });
 
-// создание HTTP сервера и определение
-// слушателя для обработки запросов
+// creating an HTTP server and defining
+// a listener for request handling
 const server = new http.Server();
 server.on('request', async (req, res) => {
   const fileSent = await staticRouter.handleRequest(req, res);
-  // если файл не был отправлен,
-  // то возвращается 404 Not Found
+  // if the file was not sent,
+  // 404 Not Found is returned
   if (!fileSent) {
     res.writeHead(404, {'Content-Type': 'text/plain'});
     res.write('404 Not Found');
@@ -104,7 +106,7 @@ server.on('request', async (req, res) => {
   }
 });
 
-// запуск сервера
+// starting the server
 server.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
   console.log('Try to open:');
@@ -113,24 +115,24 @@ server.listen(3000, () => {
 });
 ```
 
-Запуск Node.js процесса.
+Node.js process startup.
 
 ```bash
 node ./src/server.js
 ```
 
-## Маршрутизатор
+## Router
 
-Класс `HttpStaticRouter` является основным компонентом модуля. Он отвечает
-за хранение определений маршрутов, сопоставление входящих HTTP-запросов
-с ресурсами файловой системы и потоковую передачу данных клиенту.
+The `HttpStaticRouter` class is the main module component. It is responsible
+for storing route definitions, matching incoming HTTP requests with file system
+resources, and streaming data to the client.
 
-### Создание экземпляра
+### Instantiation
 
-Конструктор маршрутизатора принимает объект настроек, который позволяет
-задать базовые параметры работы.
+The router constructor accepts an options object that allows setting basic
+operation parameters.
 
-Сигнатура:
+Signature:
 
 ```ts
 type HttpStaticRouterOptions = {
@@ -140,40 +142,39 @@ type HttpStaticRouterOptions = {
 constructor(options?: HttpStaticRouterOptions);
 ```
 
-**Параметры**
+**Parameters**
 
-- `baseDir: string` - абсолютный путь к базовой директории.  
-  Если параметр указан, все относительные пути при регистрации маршрутов
-  будут разрешаться относительно этой директории.
+- `baseDir: string` - absolute path to the base directory.  
+  If the parameter is specified, all relative paths during route registration
+  will be resolved relative to this directory.
 
-**Пример**
+**Example**
 
-Создание экземпляра с указанием базовой директории.
+Instantiation with the specified base directory.
 
 ```js
 import path from 'path';
 import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 
-// создание маршрутизатора с указанием абсолютного пути
-// к директории, в которой хранятся статические файлы
+// router creation with specifying the absolute path
+// to the directory where static files are stored
 const staticRouter = new HttpStaticRouter({
   baseDir: path.join(import.meta.dirname, '../public'),
 });
 ```
 
-*i. Доступ к переменной `import.meta.dirname` (директория текущего модуля)
-возможен только при использовании *ESM* стандарта, начиная с версии
-Node.js 20.11.0. Для более ранних версий или *CommonJS*
-используется `__dirname`.*
+*i. Access to the `import.meta.dirname` variable (current module directory)
+is possible only when using the *ESM* standard, starting from Node.js 20.11.0.
+For earlier versions or *CommonJS*, `__dirname` is used.*
 
-### Регистрация маршрута
+### Route registration
 
-Метод `defineRoute` добавляет новое правило маршрутизации, связывая виртуальный
-путь (*URL*) с реальным файлом или директорией на сервере. В момент вызова
-данного метода маршрутизатор проверяет физическое существование указанного
-ресурса в файловой системе.
+The `defineRoute` method adds a new routing rule, linking a virtual path
+(*URL*) with an actual file or directory on the server. When calling this
+method, the router checks the physical existence of the specified resource
+in the file system.
 
-Сигнатура:
+Signature:
 
 ```ts
 type StaticRouteDefinition = {
@@ -184,90 +185,88 @@ type StaticRouteDefinition = {
 defineRoute(routeDef: StaticRouteDefinition): StaticRoute;
 ```
 
-**Параметры**
+**Parameters**
 
 - `remotePath: string`  
-  Префикс URL-адреса, с которого должен начинаться входящий запрос  
-  (обязательно должен начинаться со слеша `/`).
+  URL prefix that an incoming request must start with
+  (must start with a slash `/`).
 
 - `resourcePath: string`  
-  Путь к существующему файлу или директории в файловой системе.
+  Path to an existing file or directory in the file system.
 
-*i. Если при [создании экземпляра](#создание-экземпляра) маршрутизатора не была
-указана опция `baseDir`, значение параметра `resourcePath` обязано быть
-абсолютным путем.*
+*i. If the `baseDir` option was not specified during router
+[instantiation](#instantiation), the `resourcePath` parameter value must
+be an absolute path.*
 
-**Примеры**
+**Examples**
 
-Регистрация конкретного файла. Запрос по указанному пути в параметре
-`remotePath` вернет содержимое связанного файла. Маршрутизатор учитывает
-наличие/отсутствие завершающего слеша в конце пути.
+Specific file registration. A request to the specified path in the `remotePath`
+parameter will return the associated file content. The router takes into account
+the presence/absence of a trailing slash at the end of the path.
 
 ```js
-// предполагается, что маршрутизатор был создан
-// с указанием базовой директории (опция "baseDir")
+// it is assumed that the router was created
+// with the specified base directory ("baseDir" option)
 staticRouter.defineRoute({
   remotePath: '/about',
   resourcePath: './pages/about.html',
 });
 
 // GET /about
-// -> вернет содержимое ./pages/about.html
+// -> returns the ./pages/about.html content
 ```
 
-Публикация содержимого директории. Если маршрут указывает на директорию,
-дополнительная часть URL-адреса будет автоматически добавлена к пути
-файловой системы.
+Directory content publishing. If the route points to a directory, an additional
+part of the URL will be automatically appended to the file system path.
 
 ```js
-// открытие доступа ко всем файлам
-// внутри директории "assets"
+// granting access to all files
+// inside the "assets" directory
 staticRouter.defineRoute({
   remotePath: '/public',
   resourcePath: './assets',
 });
 
 // GET /public/images/logo.png
-// -> вернет содержимое ./assets/images/logo.png
+// -> returns the ./assets/images/logo.png content
 ```
 
-Регистрация маршрута с использованием абсолютного пути.
+Route registration using an absolute path.
 
 ```js
 import path from 'path';
 import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 
-// создание экземпляра без параметров
+// instantiation without parameters
 const router = new HttpStaticRouter();
 
-// так как опция "baseDir" не задана, маршрутизатор требует
-// передачи абсолютного пути для свойства "resourcePath",
-// иначе будет выброшена ошибка InvalidArgumentError
+// since the "baseDir" option is not set, the router requires
+// an absolute path for the "resourcePath" property,
+// otherwise an InvalidArgumentError will be thrown
 router.defineRoute({
   remotePath: '/robots.txt',
   resourcePath: path.join(import.meta.dirname, '../public/robots.txt'),
 });
 ```
 
-*i. Маршрутизатор выполняет проверку безопасности. Если при запросе клиент
-попытается выйти за пределы каталога с помощью относительных переходов
-(например, `GET /public/../../etc/passwd`), обработчик прервет поиск
-и файл не будет отправлен.*
+*i. The router performs a security check. If a client attempts to traverse
+outside the directory using relative paths during a request (for example,
+`GET /public/../../etc/passwd`), the handler will interrupt the search and the
+file will not be sent.*
 
-### Обработка запросов
+### Request handling
 
-Метод `handleRequest` выполняет сопоставление входящего HTTP-запроса
-с зарегистрированными маршрутами и выполняет отправку найденного файла
-клиенту. При чтении файла маршрутизатор использует потоки, что позволяет
-безопасно отдавать файлы большого размера без переполнения оперативной
-памяти сервера.
+The `handleRequest` method performs matching of an incoming HTTP request with
+registered routes and sends the found file to the client. When reading a file,
+the router uses streams, allowing safe delivery of large files without
+overflowing the server's RAM.
 
-Маршрутизатор автоматически определяет *MIME-тип* ресурса на основе его
-расширения, устанавливает необходимые заголовки, а также корректно обрабатывает
-обрыв соединения со стороны клиента, своевременно закрывая файловый поток
-для предотвращения утечек памяти.
+The router automatically determines the resource *MIME-type* based on its
+extension, sets the necessary headers, and correctly handles connection drops
+from the client side, closing the file stream in a timely manner to prevent
+memory leaks.
 
-Сигнатура:
+Signature:
 
 ```ts
 handleRequest(
@@ -276,42 +275,42 @@ handleRequest(
 ): Promise<boolean>;
 ```
 
-**Параметры**
+**Parameters**
 
-- `request: IncomingMessage` - нативный поток входящего запроса Node.js;
-- `response: ServerResponse` - нативный поток исходящего ответа Node.js;
+- `request: IncomingMessage` - native Node.js incoming request stream;
+- `response: ServerResponse` - native Node.js outgoing response stream;
 
-**Возвращаемое значение**
+**Return value**
 
-Метод возвращает `Promise`, который разрешается логическим значением `false`,
-если маршрут не совпал, целевой файл физически отсутствует или метод запроса
-не поддерживается. Во всех остальных случаях значением будет `true`, что
-позволяет определить, взял ли на себя ответственность за обработку запроса
-маршрутизатор.
+The method returns a `Promise` that resolves to a boolean `false` if the route
+does not match, the target file is physically missing, or the request method is
+not supported. In all other cases, the value will be `true`, which allows
+determining whether the router has taken responsibility for handling the
+request.
 
-**Пример**
+**Example**
 
-Интеграция метода в обработчик событий нативного HTTP-сервера.
-Если `handleRequest` возвращает `false`, сервер берет на себя
-ответственность за отправку ответа с ошибкой клиенту.
+Method integration into a native HTTP server event handler. If `handleRequest`
+returns `false`, the server takes responsibility for sending an error response
+to the client.
 
 ```js
 import http from 'http';
 import {HttpStaticRouter} from '@e22m4u/js-http-static-router';
 
-// создание экземпляра маршрутизатора
+// instantiating the router
 const staticRouter = new HttpStaticRouter();
 // staticRouter.defineRoute(...)
 
 const server = new http.Server();
 
 server.on('request', async (req, res) => {
-  // передача объектов запроса и ответа маршрутизатору
+  // passing request and response objects to the router
   const fileSent = await staticRouter.handleRequest(req, res);
 
-  // если маршрутизатор вернул false, файл не был отправлен
+  // if the router returned false, the file was not sent
   if (!fileSent) {
-    // ручная отправка статуса 404 Not Found
+    // manual sending of 404 Not Found status
     res.writeHead(404, {'Content-Type': 'text/plain; charset=utf-8'});
     res.write('404 Not Found');
     res.end();
@@ -319,18 +318,18 @@ server.on('request', async (req, res) => {
 });
 ```
 
-Маршрутизатор обрабатывает исключительно запросы с методами `GET` и `HEAD`.
-При получении запроса с любым другим методом, обработка прерывается и метод
-возвращает `false`. В случае `HEAD` запроса маршрутизатор корректно вычисляет
-размер файла и отправляет соответствующие заголовки, пропуская отправку
-тела ответа.
+The router handles exclusively requests with `GET` and `HEAD` methods. Upon
+receiving a request with any other method, processing is interrupted and the
+method returns `false`. In the case of a `HEAD` request, the router correctly
+calculates the file size and sends the appropriate headers, skipping the
+response body transmission.
 
-## Тесты
+## Tests
 
 ```bash
 npm run test
 ```
 
-## Лицензия
+## License
 
 MIT
