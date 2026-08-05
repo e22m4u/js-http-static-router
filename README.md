@@ -251,7 +251,7 @@ router.defineRoute({
 
 *i. The router performs a security check. If a client attempts to traverse
 outside the directory using relative paths during a request (for example,
-`GET /public/../../etc/passwd`), the handler will interrupt the search and the
+`GET /public/../../config.json`), the handler will interrupt the search and the
 file will not be sent.*
 
 ### Request handling
