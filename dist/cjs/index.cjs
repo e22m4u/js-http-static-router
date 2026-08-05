@@ -338,6 +338,10 @@ var HttpStaticRouter = class extends import_js_service.DebuggableService {
       debug("Request path contains duplicate slashes.");
       return;
     }
+    if (requestPath.includes("\0")) {
+      debug("Request path contains a null byte.");
+      return;
+    }
     if (!this._routes.length) {
       debug("No registered routes.");
       return;

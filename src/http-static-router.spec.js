@@ -546,6 +546,19 @@ describe('HttpStaticRouter', function () {
           const res = await promise;
           expect(res).to.be.undefined;
         });
+
+        it('should return undefined when a request path contains a null byte', async function () {
+          const S = new HttpStaticRouter();
+          S.defineRoute({
+            remotePath: '/segment1/segment2',
+            resourcePath: ABS_RABBIT_FILE,
+          });
+          const req = createRequestMock({path: '/segment1/segment2%00'});
+          const promise = S._findFileForRequest(req);
+          expect(promise).to.be.instanceOf(Promise);
+          const res = await promise;
+          expect(res).to.be.undefined;
+        });
       });
     });
 
