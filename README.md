@@ -11,7 +11,7 @@ The module is useful for embedding documentation or administrative panels
 directly into a server application, avoiding the deployment of additional
 infrastructure.
 
-- Integration into an existing *http* server.
+- Integration into an existing *HTTP* server.
 - Managing file system access via routes.
 - Using streams to save RAM.
 
