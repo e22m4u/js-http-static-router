@@ -5,9 +5,11 @@
   "author": "Mikhail Evstropov <e22m4u@yandex.ru>",
   "license": "MIT",
   "keywords": [
-    "static",
-    "router",
-    "http"
+    "file-server",
+    "static-server",
+    "file-router",
+    "serving",
+    "router"
   ],
   "homepage": "https://github.com/e22m4u/js-http-static-router",
   "repository": {
