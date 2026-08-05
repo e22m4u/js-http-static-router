@@ -77,14 +77,14 @@ const staticRouter = new HttpStaticRouter({
 // access to import.meta.dirname (current module directory)
 // is available only for ESM starting from Node.js 20.11.0
 
-// declaration of the "index.html" file
+// serving the "index.html" file
 // as an index page
 staticRouter.defineRoute({
   remotePath: '/',
   resourcePath: './index.html',
 });
 
-// publishing the "assets" directory content
+// serving the "assets" directory content
 // for access relative to the root
 // example: http://localhost:3000/rabbit.txt
 staticRouter.defineRoute({
@@ -216,7 +216,7 @@ staticRouter.defineRoute({
 // -> returns the ./pages/about.html content
 ```
 
-Directory content publishing. If the route points to a directory, an additional
+Directory content serving. If the route points to a directory, an additional
 part of the URL will be automatically appended to the file system path.
 
 ```js
@@ -259,7 +259,7 @@ file will not be sent.*
 The `handleRequest` method performs matching of an incoming HTTP request with
 registered routes and sends the found file to the client. When reading a file,
 the router uses streams, allowing safe delivery of large files without
-overflowing the server's RAM.
+overloading the server's RAM.
 
 The router automatically determines the resource *MIME-type* based on its
 extension, sets the necessary headers, and correctly handles connection drops
